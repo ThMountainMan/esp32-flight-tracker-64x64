@@ -29,6 +29,8 @@ Provides `AppConfig` struct consumed by all other modules.
   derived from the observer's latitude/longitude and `radius_km`.
 - Parses the JSON response into a `std::vector<Aircraft>`.
 - Filters to aircraft within the configured radius using the Haversine formula.
+- Applies optional altitude filters (`filters.min_altitude_ft` / `filters.max_altitude_ft`)
+  after parsing each FR24 row. Unknown altitude (`0`) is retained by policy.
 - Returns an error string on failure (network, parse, etc.).
 
 ### `display` (`src/display.h/.cpp`)
@@ -36,7 +38,9 @@ Provides `AppConfig` struct consumed by all other modules.
 - Owns a single `MatrixPanel_I2S_DMA *` instance.
 - Provides four screen modes: **splash**, **status**, **clock**, **flight**.
 - Flight screen shows: airline badge, callsign, aircraft type, altitude, speed,
-  distance, heading arrow, and pagination counter.
+  distance, heading, and pagination counter.
+- Keeps telemetry internally as FR24-native feet / knots / km and converts to configured
+  output units only when rendering.
 - Airline colours and 2-character badge text come from `airlines`.
 
 ### `airlines` (`src/airlines.h/.cpp`)
@@ -51,7 +55,8 @@ Provides `AppConfig` struct consumed by all other modules.
 Orchestrates the application:
 1. Initialises LittleFS, config, display, Wi-Fi, NTP.
 2. Polls FR24 every `poll_interval_seconds`.
-3. Cycles flight screens every 5 s; shows the clock when no flights are tracked.
+3. Cycles flight screens every `display.flight_screen_seconds` (default 5 s);
+   shows the clock when no flights are tracked.
 4. Reconnects Wi-Fi automatically on drop.
 
 ## Memory and UI Constraints

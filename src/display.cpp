@@ -10,6 +10,13 @@
 #include "airlines.h"
 #include "fr24_client.h"
 
+namespace {
+constexpr float kKmToMiles = 0.621371F;
+constexpr float kFeetToMeters = 0.3048F;
+constexpr float kKnotsToKmh = 1.852F;
+constexpr float kKnotsToMph = 1.150779F;
+}
+
 // ---------------------------------------------------------------------------
 // Panel pin defaults (override via platformio.ini build_flags if needed)
 // ---------------------------------------------------------------------------
@@ -78,6 +85,18 @@ bool Display::begin(const AppConfig &config) {
   mxconfig.gpio.clk = HUB75_CLK_PIN;
 
   rotate180_ = config.rotate180;
+  clock24Hour_ = config.clock24Hour;
+  distanceUnit_ =
+      (config.distanceUnit == "mi") ? DistanceUnit::Mi : DistanceUnit::Km;
+  altitudeUnit_ =
+      (config.altitudeUnit == "m") ? AltitudeUnit::Meters : AltitudeUnit::Feet;
+  if (config.speedUnit == "kmh") {
+    speedUnit_ = SpeedUnit::Kmh;
+  } else if (config.speedUnit == "mph") {
+    speedUnit_ = SpeedUnit::Mph;
+  } else {
+    speedUnit_ = SpeedUnit::Knots;
+  }
 
   matrix_ = new MatrixPanel_I2S_DMA(mxconfig);
   if (!matrix_->begin()) {
@@ -117,18 +136,29 @@ void Display::showClock(bool networkOk, const String &sourceStatus) {
   localtime_r(&now, &tm_info);
 
   char timeBuf[6];
-  snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d", tm_info.tm_hour,
-           tm_info.tm_min);
+  if (clock24Hour_) {
+    snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d", tm_info.tm_hour,
+             tm_info.tm_min);
+  } else {
+    int hour12 = tm_info.tm_hour % 12;
+    if (hour12 == 0) hour12 = 12;
+    snprintf(timeBuf, sizeof(timeBuf), "%2d:%02d", hour12, tm_info.tm_min);
+  }
 
   uint16_t timeColour =
       networkOk ? matrix_->color565(0, 220, 255) : matrix_->color565(180, 180, 180);
   text(4, 8, timeColour, String(timeBuf), 2);
+  if (!clock24Hour_) {
+    text(50, 24, matrix_->color565(180, 180, 180),
+         (tm_info.tm_hour >= 12) ? "PM" : "AM", 1);
+  }
 
-  char dateBuf[9];
-  int day  = tm_info.tm_mday % 100;
-  int mon  = (tm_info.tm_mon + 1) % 100;
-  int year = tm_info.tm_year % 100;
-  snprintf(dateBuf, sizeof(dateBuf), "%02d/%02d/%02d", day, mon, year);
+  // strftime formats struct tm fields directly and avoids snprintf truncation
+  // warnings from conservative integer-range analysis.
+  char dateBuf[9] = {};
+  if (strftime(dateBuf, sizeof(dateBuf), "%d/%m/%y", &tm_info) == 0) {
+    snprintf(dateBuf, sizeof(dateBuf), "--/--/--");
+  }
   text(0, 30, 0xFFFF, String(dateBuf), 1);
 
   // Truncate status to fit one line at scale-1 (6px per char, 64px wide = 10 chars)
@@ -169,30 +199,57 @@ void Display::showFlight(const Aircraft &aircraft, size_t index,
   // -----------------------------------------------------------------------
   // Callsign / flight number (top-right area, starting at x=18)
   // -----------------------------------------------------------------------
-  text(18, 0, 0xFFFF, aircraft.callsign, 1);
+  String callsign = aircraft.callsign;
+  if (callsign.length() > 7) callsign = callsign.substring(0, 7);
+  text(18, 0, 0xFFFF, callsign, 1);
 
   // -----------------------------------------------------------------------
   // Aircraft type
   // -----------------------------------------------------------------------
-  text(18, 10, matrix_->color565(180, 180, 180), aircraft.type, 1);
+  String type = aircraft.type;
+  if (type.length() > 7) type = type.substring(0, 7);
+  text(18, 10, matrix_->color565(180, 180, 180), type, 1);
 
   // -----------------------------------------------------------------------
   // Altitude and speed (rows 20-30)
   // -----------------------------------------------------------------------
+  int altitudeValue = aircraft.altitudeFeet;
+  const char *altitudeSuffix = "ft";
+  if (altitudeUnit_ == AltitudeUnit::Meters) {
+    altitudeValue =
+        static_cast<int>(aircraft.altitudeFeet * kFeetToMeters + 0.5F);
+    altitudeSuffix = "m";
+  }
   char altBuf[12];
-  snprintf(altBuf, sizeof(altBuf), "%5dft", aircraft.altitudeFeet);
+  snprintf(altBuf, sizeof(altBuf), "A%d%s", altitudeValue, altitudeSuffix);
   text(0, 20, matrix_->color565(0, 220, 120), String(altBuf), 1);
 
+  int speedValue = aircraft.speedKnots;
+  const char *speedSuffix = "kt";
+  if (speedUnit_ == SpeedUnit::Kmh) {
+    speedValue = static_cast<int>(aircraft.speedKnots * kKnotsToKmh + 0.5F);
+    speedSuffix = "kmh";
+  } else if (speedUnit_ == SpeedUnit::Mph) {
+    speedValue = static_cast<int>(aircraft.speedKnots * kKnotsToMph + 0.5F);
+    speedSuffix = "mph";
+  }
   char spdBuf[12];
-  snprintf(spdBuf, sizeof(spdBuf), "%3dkt", aircraft.speedKnots);
+  snprintf(spdBuf, sizeof(spdBuf), "S%d%s", speedValue, speedSuffix);
   text(0, 30, matrix_->color565(100, 200, 255), String(spdBuf), 1);
 
-  // -----------------------------------------------------------------------
-  // Distance
-  // -----------------------------------------------------------------------
+  char hdgBuf[8];
+  snprintf(hdgBuf, sizeof(hdgBuf), "H%03d", aircraft.headingDegrees);
+  text(0, 40, matrix_->color565(180, 180, 180), String(hdgBuf), 1);
+
+  float distanceValue = aircraft.distanceKm;
+  const char *distanceSuffix = "km";
+  if (distanceUnit_ == DistanceUnit::Mi) {
+    distanceValue = aircraft.distanceKm * kKmToMiles;
+    distanceSuffix = "mi";
+  }
   char distBuf[12];
-  snprintf(distBuf, sizeof(distBuf), "%.1fkm", aircraft.distanceKm);
-  text(0, 40, matrix_->color565(255, 220, 80), String(distBuf), 1);
+  snprintf(distBuf, sizeof(distBuf), "%.1f%s", distanceValue, distanceSuffix);
+  text(30, 40, matrix_->color565(255, 220, 80), String(distBuf), 1);
 
   // -----------------------------------------------------------------------
   // Page indicator (bottom row): e.g.  "2/5"

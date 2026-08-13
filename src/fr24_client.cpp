@@ -31,6 +31,19 @@ String arrayString(JsonArrayConst row, size_t index) {
   const char *value = row[index] | "";
   return String(value);
 }
+
+bool passesAltitudeFilter(const AppConfig &config, int altitudeFeet) {
+  // FR24 uses 0 when altitude is unknown; keep these entries unless a future
+  // ground-traffic exclusion mode is added.
+  if (altitudeFeet <= 0) return true;
+  if (config.minAltitudeFeet > 0 && altitudeFeet < config.minAltitudeFeet) {
+    return false;
+  }
+  if (config.maxAltitudeFeet > 0 && altitudeFeet > config.maxAltitudeFeet) {
+    return false;
+  }
+  return true;
+}
 }  // namespace
 
 float Fr24Client::distanceKm(float latA, float lonA, float latB, float lonB) {
@@ -100,6 +113,7 @@ bool Fr24Client::fetchNearby(const AppConfig &config,
     if (item.distanceKm > config.radiusKm) continue;
     item.headingDegrees = row[3] | 0;
     item.altitudeFeet = row[4] | 0;
+    if (!passesAltitudeFilter(config, item.altitudeFeet)) continue;
     item.speedKnots = row[5] | 0;
     item.type = arrayString(row, 8);
     item.callsign = arrayString(row, 16);

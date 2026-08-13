@@ -16,7 +16,12 @@
 **Symptom:** Config loads but values seem wrong.
 
 - Check field names exactly match those in [CONFIG.md](CONFIG.md) – they are case-sensitive.
-- Values outside constraints (e.g. `radius_km` > 200) may still load but cause runtime issues.
+- Values outside constraints are rejected at boot.
+- If both altitude filters are non-zero, `min_altitude_ft` must not exceed `max_altitude_ft`.
+- Unit fields must use supported values only:
+  - `display.distance_unit`: `km` or `mi`
+  - `display.altitude_unit`: `ft` or `m`
+  - `display.speed_unit`: `kt`, `kmh`, or `mph`
 
 ---
 
@@ -87,4 +92,8 @@ The clock/status screen is shown when `aircraft` is empty. Possible causes:
 
 - You are outside a busy flight corridor – increase `radius_km`.
 - The FR24 feed returned zero results for the bounding box (normal at night or remote locations).
+- `filters.min_altitude_ft` / `filters.max_altitude_ft` may be excluding flights in your area.
 - An error occurred during the last poll – check the status line on the clock screen or serial log.
+
+Note: aircraft records with unknown altitude (`0` from FR24) are kept even when altitude
+filters are active.

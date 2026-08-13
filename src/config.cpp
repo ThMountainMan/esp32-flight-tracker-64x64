@@ -31,6 +31,7 @@ bool AppConfig::load() {
   JsonObjectConst location = document["location"];
   JsonObjectConst display = document["display"];
   JsonObjectConst fr24 = document["fr24"];
+  JsonObjectConst filters = document["filters"];
   const char *ssid = wifi["ssid"] | "";
   const char *password = wifi["password"] | "";
   if (ssid[0] == '\0' || password[0] == '\0') {
@@ -38,21 +39,60 @@ bool AppConfig::load() {
     return false;
   }
 
-  AppConfig parsed = *this;
-  parsed.wifiSsid = ssid;
-  parsed.wifiPassword = password;
-  parsed.latitude = location["latitude"] | parsed.latitude;
-  parsed.longitude = location["longitude"] | parsed.longitude;
-  parsed.radiusKm = location["radius_km"] | parsed.radiusKm;
-  parsed.brightness = display["brightness"] | parsed.brightness;
-  parsed.rotate180 = display["rotate_180"] | parsed.rotate180;
-  parsed.pollIntervalSeconds = fr24["poll_interval_seconds"] | parsed.pollIntervalSeconds;
+  wifiSsid = ssid;
+  wifiPassword = password;
+  latitude = location["latitude"] | latitude;
+  longitude = location["longitude"] | longitude;
+  radiusKm = location["radius_km"] | radiusKm;
+  brightness = display["brightness"] | brightness;
+  flightScreenSeconds = display["flight_screen_seconds"] | flightScreenSeconds;
+  rotate180 = display["rotate_180"] | rotate180;
+  clock24Hour = display["clock_24_hour"] | clock24Hour;
+  minAltitudeFeet = filters["min_altitude_ft"] | minAltitudeFeet;
+  maxAltitudeFeet = filters["max_altitude_ft"] | maxAltitudeFeet;
+  pollIntervalSeconds = fr24["poll_interval_seconds"] | pollIntervalSeconds;
 
-  if (!valuesAreInRange(parsed)) {
+  distanceUnit = String(display["distance_unit"] | distanceUnit.c_str());
+  altitudeUnit = String(display["altitude_unit"] | altitudeUnit.c_str());
+  speedUnit = String(display["speed_unit"] | speedUnit.c_str());
+  distanceUnit.toLowerCase();
+  altitudeUnit.toLowerCase();
+  speedUnit.toLowerCase();
+
+  if (distanceUnit != "km" && distanceUnit != "mi") {
+    Serial.printf("[config] display.distance_unit must be 'km' or 'mi' (got '%s').\n",
+                  distanceUnit.c_str());
+    return false;
+  }
+  if (altitudeUnit != "ft" && altitudeUnit != "m") {
+    Serial.printf("[config] display.altitude_unit must be 'ft' or 'm' (got '%s').\n",
+                  altitudeUnit.c_str());
+    return false;
+  }
+  if (speedUnit != "kt" && speedUnit != "kmh" && speedUnit != "mph") {
+    Serial.printf(
+        "[config] display.speed_unit must be 'kt', 'kmh', or 'mph' (got '%s').\n",
+        speedUnit.c_str());
+    return false;
+  }
+
+  if (latitude < -90.0F || latitude > 90.0F || longitude < -180.0F ||
+      longitude > 180.0F || radiusKm <= 0.0F || radiusKm > 150.0F ||
+      pollIntervalSeconds < 30 || pollIntervalSeconds > 3600 ||
+      flightScreenSeconds < 2 || flightScreenSeconds > 60 ||
+      minAltitudeFeet < 0 || minAltitudeFeet > 60000 || maxAltitudeFeet < 0 ||
+      maxAltitudeFeet > 60000) {
     Serial.println("[config] Configuration values are outside safe limits.");
     return false;
   }
-  *this = parsed;
+  if (minAltitudeFeet > 0 && maxAltitudeFeet > 0 &&
+      minAltitudeFeet > maxAltitudeFeet) {
+    Serial.printf(
+        "[config] filters.min_altitude_ft (%d) must not exceed "
+        "filters.max_altitude_ft (%d).\n",
+        minAltitudeFeet, maxAltitudeFeet);
+    return false;
+  }
   return true;
 }
 
@@ -70,6 +110,13 @@ bool AppConfig::saveAtomic() const {
   document["location"]["radius_km"] = radiusKm;
   document["display"]["brightness"] = brightness;
   document["display"]["rotate_180"] = rotate180;
+  document["display"]["flight_screen_seconds"] = flightScreenSeconds;
+  document["display"]["clock_24_hour"] = clock24Hour;
+  document["display"]["distance_unit"] = distanceUnit;
+  document["display"]["altitude_unit"] = altitudeUnit;
+  document["display"]["speed_unit"] = speedUnit;
+  document["filters"]["min_altitude_ft"] = minAltitudeFeet;
+  document["filters"]["max_altitude_ft"] = maxAltitudeFeet;
   document["fr24"]["poll_interval_seconds"] = pollIntervalSeconds;
 
   File file = LittleFS.open("/config.json.tmp", "w");
