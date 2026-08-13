@@ -4,7 +4,7 @@
 
 - **PlatformIO** – install the [PlatformIO IDE](https://platformio.org/platformio-ide) extension
   for VS Code, or install the CLI: `pip install platformio`
-- **Python 3.8+** – required by PlatformIO
+- **Python 3.8+** – required by PlatformIO and the optional `tools/build_icons.py` helper
 - **ESP32 board** with USB-to-serial (CP2102 / CH340 / built-in USB)
 
 ## Clone and Configure
@@ -51,24 +51,23 @@ pio run -e esp32-dev --target uploadfs
 pio device monitor -e esp32-dev
 ```
 
-Baud rate is 115200.
+Baud rate is 115200. Log lines are prefixed with the module name, e.g. `[wifi]`, `[fr24]`.
 
 ---
 
 ## Downloading Pre-Built Firmware from GitHub Actions
 
-Every push to `main` and every pull request triggers the CI workflow, which compiles
-firmware for both `esp32-dev` and `esp32-s3` and uploads the binaries as downloadable
-artifacts. **GitHub-hosted runners have no USB connection and cannot flash a physical
-ESP32; flashing must always be done on your local machine.**
+Every push and every pull request triggers the CI workflow, which compiles firmware for
+both `esp32-dev` and `esp32-s3` and uploads the binaries as downloadable artifacts.
+**GitHub-hosted runners have no USB connection; flashing must always be done locally.**
 
 ### How to download an artifact
 
-1. Go to the repository on GitHub →
-   **Actions** tab → click the most recent successful workflow run.
-2. Scroll to the **Artifacts** section at the bottom of the run summary.
-3. Click the artifact name (e.g. `esp32-flight-tracker-esp32-dev`) to download a ZIP.
-4. Extract the ZIP to obtain `firmware.bin`.
+1. Go to the repository on GitHub → **Actions** tab → click the most recent successful
+   workflow run.
+2. Scroll to the **Artifacts** section and click the artifact name
+   (e.g. `esp32-flight-tracker-esp32-dev`) to download a ZIP.
+3. Extract the ZIP to obtain `firmware.bin`.
 
 ### Flash the downloaded firmware with esptool
 
@@ -90,7 +89,7 @@ esptool.py --chip esp32s3 --port /dev/ttyACM0 --baud 921600 \
 
 ### Flash config.json after flashing firmware
 
-Because `config.json` is stored in the LittleFS partition it is **not** included in
+`config.json` is stored in the LittleFS partition and is **not** included in
 `firmware.bin`. You must still build and upload the filesystem from your local clone:
 
 ```bash
@@ -98,11 +97,9 @@ Because `config.json` is stored in the LittleFS partition it is **not** included
 pio run -e esp32-dev --target uploadfs
 ```
 
-Alternatively, use [LittleFS_esp32 filesystem uploader](https://github.com/lorol/arduino-esp32fs-plugin)
-to upload the `data/` folder directly if you prefer the Arduino IDE workflow.
-
 ## ESP32-S3 Notes
 
 - The S3 board uses a **USB-OTG** port; select the correct COM/tty port.
-- Some S3 boards need `upload_protocol = esptool` in `platformio.ini` if auto-detection
-  fails.
+- Some S3 boards need `upload_protocol = esptool` added to the `[env:esp32-s3]` section
+  in `platformio.ini` if auto-detection fails.
+- The default UART0 TX/RX pins differ from classic ESP32; consult your board's datasheet.
