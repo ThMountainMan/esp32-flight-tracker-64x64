@@ -22,5 +22,4 @@ class Display {
   void text(int x, int y, uint16_t colour, const String &value,
             uint8_t size = 1);
   void fillRect(int x, int y, int width, int height, uint16_t colour);
-  static const char *headingArrow(int deg);
 };

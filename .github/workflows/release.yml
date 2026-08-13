@@ -1,0 +1,128 @@
+name: Release Firmware
+
+# Trigger on version tags (e.g. v1.0.0) or manual dispatch.
+# Does NOT trigger on every push — prevents unreviewed releases.
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to create (e.g. v1.0.0)"
+        required: true
+
+# Least-privilege permissions: write only to releases and pages contents.
+permissions:
+  contents: write   # create/update GitHub Release and upload assets
+  pages: write      # update GitHub Pages (manifest version injection)
+  id-token: write   # required by actions/deploy-pages
+
+jobs:
+  build:
+    name: Build firmware (${{ matrix.env }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Only esp32-dev is published; esp32-s3 needs separate bootloader offset
+        # verification before its manifest can be safely released.
+        env: [esp32-dev]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ matrix.env }}-${{ hashFiles('platformio.ini') }}
+          restore-keys: pio-${{ matrix.env }}-
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Build ${{ matrix.env }}
+        run: pio run -e ${{ matrix.env }}
+
+      # Collect the binaries that ESP Web Tools needs to flash.
+      # Offsets (standard espressif32 framework, no custom partition file):
+      #   bootloader  0x1000  (4096)
+      #   partitions  0x8000  (32768)
+      #   boot_app0   0xe000  (57344)
+      #   firmware    0x10000 (65536)
+      - name: Stage release assets
+        run: |
+          mkdir -p staging/${{ matrix.env }}
+          BUILD_DIR=".pio/build/${{ matrix.env }}"
+
+          cp "$BUILD_DIR/bootloader.bin"  staging/${{ matrix.env }}/bootloader.bin
+          cp "$BUILD_DIR/partitions.bin"  staging/${{ matrix.env }}/partitions.bin
+          cp "$BUILD_DIR/firmware.bin"    staging/${{ matrix.env }}/firmware.bin
+
+          # boot_app0 ships with the espressif32 framework; locate it in the
+          # PlatformIO package cache.
+          BOOT_APP0=$(find ~/.platformio/packages -name "boot_app0.bin" | head -1)
+          if [ -z "$BOOT_APP0" ]; then
+            echo "ERROR: boot_app0.bin not found in PlatformIO packages" >&2
+            exit 1
+          fi
+          cp "$BOOT_APP0" staging/${{ matrix.env }}/boot_app0.bin
+
+          # Inject version into the manifest.
+          VERSION="${{ github.ref_name }}${{ github.event.inputs.tag }}"
+          sed "s/@@VERSION@@/${VERSION}/g" \
+            docs/web-installer/manifest-${{ matrix.env }}.json \
+            > staging/${{ matrix.env }}/manifest-${{ matrix.env }}.json
+
+          echo "Staged files:"
+          ls -lh staging/${{ matrix.env }}/
+
+      - name: Upload staged assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.env }}
+          path: staging/${{ matrix.env }}/
+          retention-days: 14
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all firmware artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: staging/
+
+      - name: Determine release tag
+        id: tag
+        run: |
+          TAG="${{ github.ref_name }}${{ github.event.inputs.tag }}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      # Create or update the GitHub Release and upload all binaries.
+      # Files are uploaded as flat assets with the environment prefix so they
+      # can be referenced by the web installer manifest via the Releases API
+      # (CORS-compatible public download URLs).
+      - name: Create / update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: "ESP32 Flight Tracker ${{ steps.tag.outputs.tag }}"
+          draft: true   # owner reviews before publishing; prevents auto-publish
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            staging/firmware-esp32-dev/bootloader.bin
+            staging/firmware-esp32-dev/partitions.bin
+            staging/firmware-esp32-dev/boot_app0.bin
+            staging/firmware-esp32-dev/firmware.bin
+            staging/firmware-esp32-dev/manifest-esp32-dev.json
+
+      # NOTE ON CONFIGURATION:
+      # data/config.json (Wi-Fi credentials, lat/lon) is NOT included in the
+      # release assets. Users must upload it separately via PlatformIO LittleFS
+      # (pio run -e esp32-dev -t uploadfs) after flashing.
+      # Only data/config.example.json is committed to the repository.

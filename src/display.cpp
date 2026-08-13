@@ -1,149 +1,202 @@
-/**
- * display.cpp – HUB75 64×64 panel rendering for ESP32 Flight Tracker.
- *
- * Default HUB75 GPIO mapping (ESP32 DevKit):
- *   R1=25  G1=26  B1=27
- *   R2=14  G2=12  B2=13
- *   A=23   B=22   C=21   D=19   E=-1  (for 64-row panels set E=18 if needed)
- *   LAT=4  OE=15  CLK=2
- *
- * These can be overridden in platformio.ini via build_flags (e.g. -DMATRIX_PIN_CLK=2).
- * The panel requires a separate 5 V supply; see docs/WIRING.md.
- */
+// display.cpp  –  HUB75 64x64 LED matrix rendering implementation
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 KK-ThBer/esp32-flight-tracker-64x64 contributors
 
 #include "display.h"
 
 #include <Arduino.h>
 
-// ---------------------------------------------------------------------------
-// Panel geometry and default pin map
-// ---------------------------------------------------------------------------
+#include "airlines.h"
+#include "fr24_client.h"
 
-#ifndef MATRIX_WIDTH
-#  define MATRIX_WIDTH  64
+// ---------------------------------------------------------------------------
+// Panel pin defaults (override via platformio.ini build_flags if needed)
+// ---------------------------------------------------------------------------
+#ifndef HUB75_R1_PIN
+#define HUB75_R1_PIN 25
 #endif
-#ifndef MATRIX_HEIGHT
-#  define MATRIX_HEIGHT 64
+#ifndef HUB75_G1_PIN
+#define HUB75_G1_PIN 26
+#endif
+#ifndef HUB75_B1_PIN
+#define HUB75_B1_PIN 27
+#endif
+#ifndef HUB75_R2_PIN
+#define HUB75_R2_PIN 14
+#endif
+#ifndef HUB75_G2_PIN
+#define HUB75_G2_PIN 12
+#endif
+#ifndef HUB75_B2_PIN
+#define HUB75_B2_PIN 13
+#endif
+#ifndef HUB75_A_PIN
+#define HUB75_A_PIN 23
+#endif
+#ifndef HUB75_B_PIN
+#define HUB75_B_PIN 19
+#endif
+#ifndef HUB75_C_PIN
+#define HUB75_C_PIN 5
+#endif
+#ifndef HUB75_D_PIN
+#define HUB75_D_PIN 17
+#endif
+#ifndef HUB75_E_PIN
+#define HUB75_E_PIN 18
+#endif
+#ifndef HUB75_LAT_PIN
+#define HUB75_LAT_PIN 4
+#endif
+#ifndef HUB75_OE_PIN
+#define HUB75_OE_PIN 15
+#endif
+#ifndef HUB75_CLK_PIN
+#define HUB75_CLK_PIN 16
 #endif
 
-// HUB75 default pins – override via build_flags if your board differs.
-static HUB75_I2S_CFG::i2s_pins defaultPins() {
-  HUB75_I2S_CFG::i2s_pins p = {
-    /* r1 */ 25, /* g1 */ 26, /* b1 */ 27,
-    /* r2 */ 14, /* g2 */ 12, /* b2 */ 13,
-    /* a */  23, /* b */  22, /* c */  21, /* d */ 19, /* e */ -1,
-    /* lat*/ 4,  /* oe */  15, /* clk*/ 2
-  };
-  return p;
-}
-
 // ---------------------------------------------------------------------------
-// Public interface
+// Public API
 // ---------------------------------------------------------------------------
 
 bool Display::begin(const AppConfig &config) {
+  HUB75_I2S_CFG mxconfig(MATRIX_WIDTH, MATRIX_HEIGHT, 1 /* chain */);
+  mxconfig.gpio.r1 = HUB75_R1_PIN;
+  mxconfig.gpio.g1 = HUB75_G1_PIN;
+  mxconfig.gpio.b1 = HUB75_B1_PIN;
+  mxconfig.gpio.r2 = HUB75_R2_PIN;
+  mxconfig.gpio.g2 = HUB75_G2_PIN;
+  mxconfig.gpio.b2 = HUB75_B2_PIN;
+  mxconfig.gpio.a = HUB75_A_PIN;
+  mxconfig.gpio.b = HUB75_B_PIN;
+  mxconfig.gpio.c = HUB75_C_PIN;
+  mxconfig.gpio.d = HUB75_D_PIN;
+  mxconfig.gpio.e = HUB75_E_PIN;
+  mxconfig.gpio.lat = HUB75_LAT_PIN;
+  mxconfig.gpio.oe = HUB75_OE_PIN;
+  mxconfig.gpio.clk = HUB75_CLK_PIN;
+
   rotate180_ = config.rotate180;
 
-  HUB75_I2S_CFG mxcfg(MATRIX_WIDTH, MATRIX_HEIGHT, /*chains=*/1, defaultPins());
-  mxcfg.double_buff = false;
-
-  matrix_ = new MatrixPanel_I2S_DMA(mxcfg);
+  matrix_ = new MatrixPanel_I2S_DMA(mxconfig);
   if (!matrix_->begin()) {
-    Serial.println("[display] MatrixPanel begin() failed");
+    Serial.println("[display] MatrixPanel init failed");
     return false;
   }
-
   matrix_->setBrightness8(config.brightness);
-  if (rotate180_) matrix_->setRotation(2);
-  clear();
+  if (rotate180_) matrix_->setRotation(2);  // 180-degree flip via GFX
+  matrix_->clearScreen();
   return true;
 }
-
-// ---------------------------------------------------------------------------
-// Screens
-// ---------------------------------------------------------------------------
 
 void Display::showSplash() {
   if (!matrix_) return;
   clear();
-  // Centred title
-  text(4, 10, matrix_->color565(0, 200, 255), "ESP32", 2);
-  text(4, 28, matrix_->color565(0, 200, 255), "FLIGHT", 2);
-  text(4, 46, matrix_->color565(255, 140, 0), "TRACKER", 2);
+  // Simple splash: project name centred on the panel
+  matrix_->setTextColor(matrix_->color565(0, 180, 255));
+  text(4, 10, matrix_->color565(0, 180, 255), "FLIGHT");
+  text(4, 22, matrix_->color565(255, 200, 0), "TRACKER");
+  text(8, 34, matrix_->color565(200, 200, 200), "64x64");
 }
 
 void Display::showStatus(const char *title, const String &detail,
                          uint16_t colour) {
   if (!matrix_) return;
   clear();
-  text(2, 4,  colour,                              String(title));
-  text(2, 16, matrix_->color565(200, 200, 200),   detail);
+  text(0, 2, colour, String(title), 1);
+  text(0, 14, 0xFFFF, detail, 1);
 }
 
 void Display::showClock(bool networkOk, const String &sourceStatus) {
   if (!matrix_) return;
   clear();
 
-  // Time (top half)
-  struct tm t;
-  if (networkOk && getLocalTime(&t, 100)) {
-    char buf[9];
-    snprintf(buf, sizeof(buf), "%02d:%02d:%02d", t.tm_hour, t.tm_min, t.tm_sec);
-    text(2, 4, matrix_->color565(0, 255, 128), String(buf), 2);
-  } else {
-    text(2, 4, matrix_->color565(255, 80, 0), "No time");
-  }
+  time_t now = time(nullptr);
+  struct tm tm_info;
+  localtime_r(&now, &tm_info);
 
-  // Status line (bottom)
-  uint16_t sColour = networkOk ? matrix_->color565(180, 180, 180)
-                                : matrix_->color565(255, 60, 60);
-  // Trim long status to avoid overflow
-  String s = sourceStatus;
-  if (s.length() > 20) s = s.substring(0, 20);
-  text(2, 50, sColour, s);
+  char timeBuf[6];
+  snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d", tm_info.tm_hour,
+           tm_info.tm_min);
+
+  uint16_t timeColour =
+      networkOk ? matrix_->color565(0, 220, 255) : matrix_->color565(180, 180, 180);
+  text(4, 8, timeColour, String(timeBuf), 2);
+
+  char dateBuf[9];
+  snprintf(dateBuf, sizeof(dateBuf), "%02d/%02d/%02d", tm_info.tm_mday,
+           tm_info.tm_mon + 1, tm_info.tm_year % 100);
+  text(0, 30, 0xFFFF, String(dateBuf), 1);
+
+  // Truncate status to fit one line at scale-1 (6px per char, 64px wide = 10 chars)
+  String status = sourceStatus;
+  if (status.length() > 10) status = status.substring(0, 10);
+  text(0, 44, matrix_->color565(180, 180, 0), status, 1);
 }
 
-void Display::showFlight(const Aircraft &ac, size_t index, size_t total) {
+void Display::showFlight(const Aircraft &aircraft, size_t index,
+                         size_t total) {
   if (!matrix_) return;
   clear();
 
-  // Airline badge (top-left 14×14 box)
-  uint16_t badgeColour = airlineColour(ac.airlineIcao);
-  fillRect(0, 0, 14, 14, badgeColour);
-  String badge = airlineBadgeText(ac.airlineIcao);
-  text(1, 3, matrix_->color565(0, 0, 0), badge);
+  // -----------------------------------------------------------------------
+  // Airline icon area (top-left 16x16 block, x=0..15, y=0..15)
+  //
+  // If a 16x16 RGB565 glyph is registered for this airline ICAO, render it
+  // using drawRGBBitmap.  Otherwise fall back to the two-letter text badge
+  // with the airline's representative colour as a background fill.
+  // -----------------------------------------------------------------------
+  const uint16_t *icon = airlineIcon(aircraft.airlineIcao);
+  if (icon != nullptr) {
+    // drawRGBBitmap copies from RAM; read from PROGMEM into a small stack
+    // buffer first (256 * 2 = 512 bytes – acceptable on ESP32).
+    uint16_t iconBuf[kIconSize * kIconSize];
+    memcpy(iconBuf, icon, sizeof(iconBuf));
+    matrix_->drawRGBBitmap(0, 0, iconBuf, kIconSize, kIconSize);
+  } else {
+    // Fallback: coloured badge with 2-letter initials
+    uint16_t bg = airlineColour(aircraft.airlineIcao);
+    fillRect(0, 0, kIconSize, kIconSize, bg);
+    String badge = airlineBadgeText(aircraft.airlineIcao);
+    // Contrasting colour: white unless bg is very bright
+    uint16_t fg = (bg > 0xC618) ? 0x0000 : 0xFFFF;
+    text(1, 4, fg, badge, 1);
+  }
 
-  // Callsign
-  String cs = ac.callsign.isEmpty() ? ac.id : ac.callsign;
-  if (cs.length() > 8) cs = cs.substring(0, 8);
-  text(16, 2, matrix_->color565(255, 255, 255), cs);
+  // -----------------------------------------------------------------------
+  // Callsign / flight number (top-right area, starting at x=18)
+  // -----------------------------------------------------------------------
+  text(18, 0, 0xFFFF, aircraft.callsign, 1);
 
+  // -----------------------------------------------------------------------
   // Aircraft type
-  text(16, 12, matrix_->color565(160, 160, 160), ac.type.isEmpty() ? "----" : ac.type);
+  // -----------------------------------------------------------------------
+  text(18, 10, matrix_->color565(180, 180, 180), aircraft.type, 1);
 
-  // Altitude
+  // -----------------------------------------------------------------------
+  // Altitude and speed (rows 20-30)
+  // -----------------------------------------------------------------------
   char altBuf[12];
-  snprintf(altBuf, sizeof(altBuf), "%5dft", ac.altitudeFeet);
-  text(2, 24, matrix_->color565(100, 200, 255), String(altBuf));
+  snprintf(altBuf, sizeof(altBuf), "%5dft", aircraft.altitudeFeet);
+  text(0, 20, matrix_->color565(0, 220, 120), String(altBuf), 1);
 
-  // Speed
   char spdBuf[12];
-  snprintf(spdBuf, sizeof(spdBuf), "%3dkt", ac.speedKnots);
-  text(2, 33, matrix_->color565(100, 255, 100), String(spdBuf));
+  snprintf(spdBuf, sizeof(spdBuf), "%3dkt", aircraft.speedKnots);
+  text(0, 30, matrix_->color565(100, 200, 255), String(spdBuf), 1);
 
+  // -----------------------------------------------------------------------
   // Distance
+  // -----------------------------------------------------------------------
   char distBuf[12];
-  snprintf(distBuf, sizeof(distBuf), "%4.1fkm", ac.distanceKm);
-  text(2, 42, matrix_->color565(255, 200, 50), String(distBuf));
+  snprintf(distBuf, sizeof(distBuf), "%.1fkm", aircraft.distanceKm);
+  text(0, 40, matrix_->color565(255, 220, 80), String(distBuf), 1);
 
-  // Heading arrow (simple ASCII)
-  const char *arrow = headingArrow(ac.headingDegrees);
-  text(48, 33, matrix_->color565(255, 255, 255), String(arrow));
-
-  // Pagination (bottom right)
-  char page[8];
-  snprintf(page, sizeof(page), "%u/%u", (unsigned)(index + 1), (unsigned)total);
-  text(40, 56, matrix_->color565(120, 120, 120), String(page));
+  // -----------------------------------------------------------------------
+  // Page indicator (bottom row): e.g.  "2/5"
+  // -----------------------------------------------------------------------
+  String page = String(index + 1) + "/" + String(total);
+  text(0, 54, matrix_->color565(120, 120, 120), page, 1);
 }
 
 // ---------------------------------------------------------------------------
@@ -164,14 +217,6 @@ void Display::text(int x, int y, uint16_t colour, const String &value,
 }
 
 void Display::fillRect(int x, int y, int width, int height, uint16_t colour) {
-  if (matrix_) matrix_->fillRect(x, y, width, height, colour);
-}
-
-/** Map heading degrees to a simple 8-direction arrow character. */
-const char *Display::headingArrow(int deg) {
-  // Normalise to 0-359
-  deg = ((deg % 360) + 360) % 360;
-  // 8 sectors of 45° each, starting at N=up
-  static const char *arrows[] = { "^", "\\", ">", "/", "v", "\\", "<", "/" };
-  return arrows[(deg + 22) / 45 % 8];
+  if (!matrix_) return;
+  matrix_->fillRect(x, y, width, height, colour);
 }
