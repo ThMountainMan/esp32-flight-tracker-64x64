@@ -1,0 +1,18 @@
+{
+  "wifi": {
+    "ssid": "REPLACE_WITH_WIFI_NAME",
+    "password": "REPLACE_WITH_WIFI_PASSWORD"
+  },
+  "location": {
+    "latitude": 55.87,
+    "longitude": -4.25,
+    "radius_km": 30.0
+  },
+  "display": {
+    "brightness": 64,
+    "rotate_180": false
+  },
+  "fr24": {
+    "poll_interval_seconds": 60
+  }
+}
