@@ -82,6 +82,7 @@ and written locally through the Web Serial API.
 - [Setup](docs/SETUP.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Feature parity roadmap](docs/FEATURE_PARITY.md)
 
 ## License
 
