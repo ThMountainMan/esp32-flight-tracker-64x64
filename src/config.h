@@ -21,4 +21,5 @@ struct AppConfig {
   bool rotate180 = false;
 
   bool load();
+  bool saveAtomic() const;
 };

@@ -98,25 +98,32 @@ versa) — the bootloader offsets are different and will brick the device.
   assets and must never be committed to the repository or included in a public
   firmware image.
 - **LittleFS image** — the filesystem partition (`/data`) is not written by the
-  web installer. Upload it separately after flashing (see below).
+  web installer. The firmware now provisions config on first boot, so a prebuilt
+  LittleFS image is optional.
 
 ---
 
-## Post-flash configuration (required)
+## Post-flash configuration (first boot)
 
-The firmware starts in a waiting state if no valid `config.json` is found on
-LittleFS. You must upload a configuration file after flashing:
+When no valid `config.json` exists, firmware starts a temporary
+`FlightTracker-Setup-*` AP with a captive portal:
+
+1. Connect your phone/laptop to the setup AP.
+2. Open any web page (or `http://192.168.4.1/`) and submit Wi-Fi + location settings.
+3. The device writes `/config.json` to LittleFS and reboots into station mode.
+
+The AP automatically times out after 10 minutes. If no valid config exists, the
+device restarts back into provisioning mode.
+
+If you prefer pre-seeding manually, upload LittleFS with PlatformIO:
 
 ```bash
-# 1. Copy the example and edit it with your settings
 cp data/config.example.json data/config.json
-# Edit data/config.json — add Wi-Fi SSID/password and your lat/lon.
-
-# 2. Upload the LittleFS image via PlatformIO
+# Edit data/config.json with your credentials and location first
 pio run -e esp32-dev -t uploadfs
 ```
 
-`data/config.json` is listed in `.gitignore`. **Do not commit it.**
+`data/config.json` stays in `.gitignore`. **Do not commit it.**
 
 ---
 
@@ -137,7 +144,7 @@ repository is private without additional access configuration.
 ## Credential safety
 
 - Wi-Fi credentials are **never** included in the firmware binary or the LittleFS
-  image published in a release.
+  image published in a public release.
 - `data/config.json` is in `.gitignore` and must not be committed.
 - Only `data/config.example.json` (no real credentials) is committed to the repo.
 - If you accidentally commit credentials, rotate them immediately and consider the

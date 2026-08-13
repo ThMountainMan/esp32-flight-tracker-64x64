@@ -15,6 +15,7 @@ An ESP32/Arduino prototype for displaying nearby FlightRadar24 aircraft on a 64Ã
 - Configurable idle clock format (24-hour or 12-hour)
 - Compact airline colour/initial badges stored in program flash
 - LittleFS JSON configuration
+- First-boot Wi-Fi + location provisioning portal
 - Idle clock when no aircraft match the configured radius
 
 ## Important notes
@@ -39,12 +40,13 @@ Read [docs/WIRING.md](docs/WIRING.md) before applying power.
 git clone https://github.com/KK-ThBer/esp32-flight-tracker-64x64.git
 cd esp32-flight-tracker-64x64
 python3 -m pip install platformio
-cp data/config.example.json data/config.json
-# Edit data/config.json and do not commit it.
-pio run -e esp32dev -t uploadfs
 pio run -e esp32dev -t upload
 pio device monitor -b 115200
 ```
+
+On first boot (or after recovery trigger), the device starts a temporary
+`FlightTracker-Setup-*` access point and captive portal so you can enter Wi-Fi,
+location, radius, brightness, and rotation from a phone or browser.
 
 ## Display layout
 
@@ -85,6 +87,7 @@ and written locally through the Web Serial API.
 - [Setup](docs/SETUP.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Feature parity roadmap](docs/FEATURE_PARITY.md)
 
 ## License
 

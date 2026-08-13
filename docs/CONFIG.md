@@ -6,6 +6,19 @@ The firmware reads `/config.json` from **LittleFS** at boot.
 
 ## Getting Started
 
+On a fresh flash, the firmware starts a temporary `FlightTracker-Setup-*` AP and
+captive portal when no valid `/config.json` exists. Use that portal to save:
+
+- Wi-Fi SSID/password
+- Observer latitude/longitude
+- Radius in km
+- Display brightness
+- Display rotation
+
+The portal writes `/config.json` atomically and restarts into station mode.
+
+You can still pre-seed LittleFS manually:
+
 1. Copy the example:
    ```
    data/config.example.json  →  data/config.json

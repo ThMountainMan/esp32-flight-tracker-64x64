@@ -3,10 +3,19 @@
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 
+namespace {
+bool valuesAreInRange(const AppConfig &config) {
+  return !(config.latitude < -90.0F || config.latitude > 90.0F ||
+           config.longitude < -180.0F || config.longitude > 180.0F ||
+           config.radiusKm <= 0.0F || config.radiusKm > 150.0F ||
+           config.pollIntervalSeconds < 30 || config.pollIntervalSeconds > 3600);
+}
+}  // namespace
+
 bool AppConfig::load() {
   File file = LittleFS.open("/config.json", "r");
   if (!file) {
-    Serial.println("[config] Missing /config.json; upload the data filesystem.");
+    Serial.println("[config] Missing /config.json.");
     return false;
   }
 
@@ -84,5 +93,52 @@ bool AppConfig::load() {
         minAltitudeFeet, maxAltitudeFeet);
     return false;
   }
+  return true;
+}
+
+bool AppConfig::saveAtomic() const {
+  if (wifiSsid.isEmpty() || wifiPassword.isEmpty() || !valuesAreInRange(*this)) {
+    Serial.println("[config] Refusing to write invalid configuration.");
+    return false;
+  }
+
+  JsonDocument document;
+  document["wifi"]["ssid"] = wifiSsid;
+  document["wifi"]["password"] = wifiPassword;
+  document["location"]["latitude"] = latitude;
+  document["location"]["longitude"] = longitude;
+  document["location"]["radius_km"] = radiusKm;
+  document["display"]["brightness"] = brightness;
+  document["display"]["rotate_180"] = rotate180;
+  document["display"]["flight_screen_seconds"] = flightScreenSeconds;
+  document["display"]["clock_24_hour"] = clock24Hour;
+  document["display"]["distance_unit"] = distanceUnit;
+  document["display"]["altitude_unit"] = altitudeUnit;
+  document["display"]["speed_unit"] = speedUnit;
+  document["filters"]["min_altitude_ft"] = minAltitudeFeet;
+  document["filters"]["max_altitude_ft"] = maxAltitudeFeet;
+  document["fr24"]["poll_interval_seconds"] = pollIntervalSeconds;
+
+  File file = LittleFS.open("/config.json.tmp", "w");
+  if (!file) {
+    Serial.println("[config] Failed to open temporary config file for writing.");
+    return false;
+  }
+  if (serializeJson(document, file) == 0) {
+    file.close();
+    LittleFS.remove("/config.json.tmp");
+    Serial.println("[config] Failed to write configuration JSON.");
+    return false;
+  }
+  file.flush();
+  file.close();
+
+  LittleFS.remove("/config.json");
+  if (!LittleFS.rename("/config.json.tmp", "/config.json")) {
+    LittleFS.remove("/config.json.tmp");
+    Serial.println("[config] Failed to atomically replace /config.json.");
+    return false;
+  }
+  Serial.println("[config] Saved /config.json successfully.");
   return true;
 }
