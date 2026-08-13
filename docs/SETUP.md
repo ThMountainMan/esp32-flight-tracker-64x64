@@ -16,6 +16,11 @@ cp data/config.example.json data/config.json
 # Edit data/config.json with your Wi-Fi credentials and location
 ```
 
+Optional display and filtering fields are already present in the example file:
+`display.flight_screen_seconds`, `display.distance_unit`, `display.altitude_unit`,
+`display.speed_unit`, `display.clock_24_hour`, and `filters.min_altitude_ft` /
+`filters.max_altitude_ft` (use `0` to disable altitude thresholds).
+
 ## Select Environment
 
 | Board | Environment flag |

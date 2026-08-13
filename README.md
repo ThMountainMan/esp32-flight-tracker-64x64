@@ -10,6 +10,9 @@ An ESP32/Arduino prototype for displaying nearby FlightRadar24 aircraft on a 64�
 - Wi-Fi and NTP time synchronization
 - Nearby aircraft polling from a bounded FlightRadar24 feed request
 - Callsign, ICAO aircraft type, altitude, speed, heading, and distance
+- Configurable altitude filters with disable-by-zero thresholds
+- Configurable flight-screen rotation interval and unit preferences (`km/mi`, `ft/m`, `kt/kmh/mph`)
+- Configurable idle clock format (24-hour or 12-hour)
 - Compact airline colour/initial badges stored in program flash
 - LittleFS JSON configuration
 - Idle clock when no aircraft match the configured radius
@@ -50,8 +53,8 @@ pio device monitor -b 115200
 │ badge   BAW123                         1/3      │
 │         A320                                   │
 ├────────────────────────────────────────────────┤
-│ ALT  10,000 ft        SPD  450 kt              │
-│ HDG  270°             DIST 12.4 km             │
+│ A10000ft              S450kt                    │
+│ H270                  12.4km                    │
 ├────────────────────────────────────────────────┤
 │ FlightRadar24 • refreshes every 60 seconds     │
 └────────────────────────────────────────────────┘

@@ -10,7 +10,6 @@
 #include "fr24_client.h"
 
 namespace {
-constexpr uint32_t kFlightScreenIntervalMs = 5000;
 constexpr char kNtpServer[] = "pool.ntp.org";
 
 AppConfig config;
@@ -85,7 +84,7 @@ void loop() {
   }
   if (aircraft.empty()) {
     display.showClock(WiFi.status() == WL_CONNECTED, sourceStatus);
-  } else if (now - lastScreenMs >= kFlightScreenIntervalMs) {
+  } else if (now - lastScreenMs >= config.flightScreenSeconds * 1000UL) {
     display.showFlight(aircraft[selectedFlight], selectedFlight, aircraft.size());
     selectedFlight = (selectedFlight + 1) % aircraft.size();
     lastScreenMs = now;
