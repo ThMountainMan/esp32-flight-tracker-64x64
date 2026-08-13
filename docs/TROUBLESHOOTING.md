@@ -2,11 +2,16 @@
 
 ## Config / LittleFS
 
-**Symptom:** `[system] LittleFS or config initialization failed` on serial.
+**Symptom:** `[system] LittleFS initialization failed` on serial.
 
 - Ensure you have uploaded the filesystem: `pio run -e esp32-dev --target uploadfs`
-- Confirm `data/config.json` exists and is valid JSON before upload.
+- Confirm `data/config.json` exists and is valid JSON before upload (if pre-seeding manually).
 - Try erasing flash first: `pio run -e esp32-dev --target erase` then re-upload both FS and firmware.
+
+**Symptom:** Device starts `FlightTracker-Setup-*` AP instead of normal mode.
+
+- No valid `/config.json` was found. Connect to the AP and complete provisioning.
+- If you intentionally uploaded `config.json`, verify JSON syntax and required fields.
 
 **Symptom:** Config loads but values seem wrong.
 
@@ -19,9 +24,10 @@
 
 **Symptom:** `[wifi] Connection timed out` repeated.
 
-- Verify SSID and password in `config.json` (remember to re-upload LittleFS after edits).
+- Verify SSID and password in `config.json` or rerun provisioning.
 - Ensure the network is 2.4 GHz – the classic ESP32 does not support 5 GHz.
 - Move the ESP32 closer to the access point.
+- After repeated failures, the device automatically starts provisioning mode for recovery.
 
 **Symptom:** Wi-Fi connects then drops repeatedly.
 

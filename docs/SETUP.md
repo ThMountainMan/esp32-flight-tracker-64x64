@@ -12,8 +12,6 @@
 ```bash
 git clone https://github.com/KK-ThBer/esp32-flight-tracker-64x64.git
 cd esp32-flight-tracker-64x64
-cp data/config.example.json data/config.json
-# Edit data/config.json with your Wi-Fi credentials and location
 ```
 
 ## Select Environment
@@ -35,13 +33,32 @@ pio run -e esp32-dev
 pio run -e esp32-dev --target upload
 ```
 
-## Upload LittleFS (config.json) — Required
+## First-Boot Provisioning (recommended)
 
-> **Important:** `config.json` is **not** bundled in the normal `firmware.bin`.
-> It lives in the LittleFS partition and must be uploaded separately.
-> Without this step the device cannot connect to Wi-Fi or FlightRadar24.
+After flashing, a fresh device starts a temporary
+`FlightTracker-Setup-<chip-id>` Wi-Fi access point and captive portal when no
+valid `/config.json` exists in LittleFS.
+
+1. Connect your phone/laptop to that AP.
+2. Open any web page (or `http://192.168.4.1/`) and complete the setup form.
+3. The device saves `/config.json` and restarts into station mode.
+
+The portal times out after 10 minutes. If no valid config exists it will restart
+back into provisioning mode so the device stays recoverable.
+
+### Recovery trigger
+
+With an already configured device, hold the **BOOT** button for 5 seconds to
+re-enter provisioning mode and update settings.
+
+## Upload LittleFS (config.json) — Optional manual pre-seed
+
+`config.json` is still not bundled in `firmware.bin`. If you prefer preloading
+config via files instead of the portal:
 
 ```bash
+cp data/config.example.json data/config.json
+# Edit data/config.json first
 pio run -e esp32-dev --target uploadfs
 ```
 
@@ -87,15 +104,10 @@ esptool.py --chip esp32s3 --port /dev/ttyACM0 --baud 921600 \
   write_flash 0x10000 firmware.bin
 ```
 
-### Flash config.json after flashing firmware
+### Optional: flash config.json after flashing firmware
 
-`config.json` is stored in the LittleFS partition and is **not** included in
-`firmware.bin`. You must still build and upload the filesystem from your local clone:
-
-```bash
-# Edit data/config.json with your credentials first
-pio run -e esp32-dev --target uploadfs
-```
+If you don't want to use first-boot provisioning, you can upload a prepared
+LittleFS image with `pio run -e esp32-dev --target uploadfs`.
 
 ## ESP32-S3 Notes
 
