@@ -153,9 +153,12 @@ void Display::showClock(bool networkOk, const String &sourceStatus) {
          (tm_info.tm_hour >= 12) ? "PM" : "AM", 1);
   }
 
-  char dateBuf[9];
-  snprintf(dateBuf, sizeof(dateBuf), "%02d/%02d/%02d", tm_info.tm_mday,
-           tm_info.tm_mon + 1, tm_info.tm_year % 100);
+  // strftime formats struct tm fields directly and avoids snprintf truncation
+  // warnings from conservative integer-range analysis.
+  char dateBuf[9] = {};
+  if (strftime(dateBuf, sizeof(dateBuf), "%d/%m/%y", &tm_info) == 0) {
+    snprintf(dateBuf, sizeof(dateBuf), "--/--/--");
+  }
   text(0, 30, 0xFFFF, String(dateBuf), 1);
 
   // Truncate status to fit one line at scale-1 (6px per char, 64px wide = 10 chars)
