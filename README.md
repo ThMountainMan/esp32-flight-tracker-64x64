@@ -57,8 +57,26 @@ pio device monitor -b 115200
 └────────────────────────────────────────────────┘
 ```
 
+## Web flasher
+
+Flash firmware directly from your browser (Chrome/Edge) using a USB-connected ESP32.
+No software installation required — the binary is downloaded from a GitHub Release
+and written locally through the Web Serial API.
+
+- **Installer page (placeholder — activate GitHub Pages first):**
+  `https://kk-thber.github.io/esp32-flight-tracker-64x64/web-installer/`
+  See [docs/WEB_FLASHER.md](docs/WEB_FLASHER.md) for activation steps and full documentation.
+
+> ⚠ The web flasher only works while the ESP32 is physically connected to
+> **your** computer by USB. GitHub-hosted runners are remote and have no USB access.
+
+> ⚠ If this repository is **private**, GitHub Pages and Release download URLs will
+> not be publicly accessible. Make the repository public or configure an alternative
+> before promoting the installer URL.
+
 ## Documentation
 
+- [Web Flasher](docs/WEB_FLASHER.md)
 - [Wiring](docs/WIRING.md)
 - [Configuration](docs/CONFIG.md)
 - [Setup](docs/SETUP.md)

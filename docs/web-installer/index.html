@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ESP32 Flight Tracker — Web Installer</title>
+  <script
+    type="module"
+    src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"
+  ></script>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #30363d;
+      --accent: #58a6ff;
+      --text: #c9d1d9;
+      --muted: #8b949e;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+    h1 { font-size: 1.75rem; color: var(--accent); margin-bottom: 0.5rem; }
+    .subtitle { color: var(--muted); margin-bottom: 2rem; font-size: 0.95rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      max-width: 520px;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+    .card h2 { font-size: 1.1rem; margin-bottom: 1rem; }
+    .card p { color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem; line-height: 1.5; }
+    esp-web-install-button {
+      display: block;
+      margin-top: 0.5rem;
+    }
+    esp-web-install-button[install-unsupported] {
+      visibility: inherit;
+    }
+    .warn {
+      background: #2d1b00;
+      border: 1px solid #6e4c00;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      color: #e3b341;
+      margin-top: 1rem;
+      line-height: 1.5;
+    }
+    .info {
+      background: #0c2d48;
+      border: 1px solid #1f6feb;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      color: #79c0ff;
+      margin-top: 1rem;
+      line-height: 1.5;
+    }
+    a { color: var(--accent); }
+    footer { color: var(--muted); font-size: 0.8rem; margin-top: 2rem; text-align: center; }
+  </style>
+</head>
+<body>
+
+<h1>✈ ESP32 Flight Tracker</h1>
+<p class="subtitle">Browser-based firmware installer &mdash; requires USB + Chrome or Edge</p>
+
+<!--
+  IMPORTANT: this page flashes a device connected by USB to YOUR computer.
+  GitHub-hosted runners have no USB access and cannot flash hardware remotely.
+  The firmware binaries are downloaded from the GitHub Release for the selected
+  version and written locally through the browser Web Serial API.
+-->
+
+<div class="card">
+  <h2>esp32-dev (standard ESP32 DevKit)</h2>
+  <p>
+    Flash the latest release firmware to a standard ESP32 DevKit board
+    (WROOM/WROVER module, 4 MB flash). The installer writes the bootloader,
+    partition table, boot_app0 helper, and application binary at the correct
+    offsets. No credentials are included; see the note below about configuration.
+  </p>
+
+  <!--
+    manifest-esp32-dev.json is fetched from the same directory as this page.
+    The release workflow copies it alongside the binaries into the GitHub Release
+    and updates @@VERSION@@ placeholders.  GitHub Pages hosts this page while
+    GitHub Releases host the actual .bin files (CORS-friendly public downloads).
+  -->
+  <esp-web-install-button manifest="manifest-esp32-dev.json">
+    <button slot="activate" style="
+      background:#238636; color:#fff; border:none; border-radius:6px;
+      padding:0.6rem 1.4rem; font-size:1rem; cursor:pointer;">
+      Connect &amp; Flash esp32-dev
+    </button>
+    <span slot="unsupported">
+      ⚠ Your browser does not support Web Serial.
+      Use <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong> (desktop).
+    </span>
+  </esp-web-install-button>
+
+  <div class="warn">
+    <strong>Before flashing:</strong> plug in a <em>USB data cable</em> (not charge-only),
+    open this page in Chrome or Edge, click the button, and select the correct serial port.
+    On some boards you must hold the <strong>BOOT</strong> button while clicking "Connect".
+    On Linux, add your user to the <code>dialout</code> group:
+    <code>sudo usermod -aG dialout $USER</code> and re-log in.
+  </div>
+
+  <div class="info">
+    <strong>Wi-Fi / configuration not included.</strong>
+    This firmware image contains no Wi-Fi credentials or location settings.
+    After flashing, upload <code>data/config.json</code> via PlatformIO LittleFS:
+    <code>pio run -e esp32-dev -t uploadfs</code>.
+    See <a href="../WEB_FLASHER.md">WEB_FLASHER.md</a> for details.
+  </div>
+</div>
+
+<div class="card">
+  <h2>Supported boards</h2>
+  <p>
+    Currently only the <strong>esp32-dev</strong> (standard ESP32 DevKit) target is
+    published. The <em>esp32-s3</em> environment uses a different bootloader offset
+    (0x0000) and requires PSRAM configuration verification before a separate manifest
+    can be safely published. Track progress in the repository issues.
+  </p>
+</div>
+
+<div class="card">
+  <h2>Requirements &amp; troubleshooting</h2>
+  <p>
+    &bull; <strong>Browser:</strong> Google Chrome or Microsoft Edge (desktop).<br />
+    &bull; <strong>Cable:</strong> USB <em>data</em> cable — pure charge cables lack the data lines.<br />
+    &bull; <strong>Local only:</strong> the ESP32 must be plugged into <em>your</em> computer; GitHub-hosted
+       runners have no USB access.<br />
+    &bull; <strong>BOOT mode:</strong> if the flash fails, hold the BOOT button on the ESP32 before
+       clicking "Connect", then release after the port appears.<br />
+    &bull; <strong>Linux permissions:</strong> <code>sudo usermod -aG dialout $USER</code>, then re-log in.<br />
+    &bull; <strong>Private repository:</strong> if this repository is private, GitHub Releases and Pages
+       may require authentication. Make the repository public or use a PAT / alternative distribution
+       method before the public installer will work for end users.
+  </p>
+  <p>
+    Full documentation: <a href="../WEB_FLASHER.md">docs/WEB_FLASHER.md</a><br />
+    Source &amp; releases: <a href="https://github.com/KK-ThBer/esp32-flight-tracker-64x64/releases">
+      github.com/KK-ThBer/esp32-flight-tracker-64x64/releases</a>
+  </p>
+</div>
+
+<footer>
+  ESP32 Flight Tracker &mdash; open source &mdash;
+  <a href="https://github.com/KK-ThBer/esp32-flight-tracker-64x64">GitHub</a>
+  &bull; Powered by <a href="https://esphome.github.io/esp-web-tools/">ESP Web Tools</a>
+</footer>
+
+</body>
+</html>

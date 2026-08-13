@@ -1,0 +1,54 @@
+name: Deploy GitHub Pages
+
+# Deploy the docs/ directory to GitHub Pages.
+# Triggered manually or on pushes to main that change docs/.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+  workflow_dispatch:
+
+# Least-privilege permissions for Pages deployment.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one concurrent deployment; cancel in-progress runs.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Publish the entire docs/ directory.
+          path: docs/
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
+
+# IMPORTANT — Repository visibility:
+# GitHub Pages for public repositories is free and serves content publicly.
+# If this repository is PRIVATE, Pages will be accessible only to authenticated
+# users (GitHub Enterprise) or will require making the repository public.
+# The web installer relies on public CORS-accessible binary URLs (GitHub
+# Releases). Private repositories cannot serve a working public web flasher
+# without additional authentication infrastructure.
+# Required repository setting: Settings → Pages → Source → "GitHub Actions".
