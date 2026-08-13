@@ -10,7 +10,16 @@
   },
   "display": {
     "brightness": 64,
-    "rotate_180": false
+    "rotate_180": false,
+    "flight_screen_seconds": 5,
+    "distance_unit": "km",
+    "altitude_unit": "ft",
+    "speed_unit": "kt",
+    "clock_24_hour": true
+  },
+  "filters": {
+    "min_altitude_ft": 0,
+    "max_altitude_ft": 0
   },
   "fr24": {
     "poll_interval_seconds": 60

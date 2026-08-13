@@ -15,8 +15,16 @@ class Display {
   void showFlight(const Aircraft &aircraft, size_t index, size_t total);
 
  private:
+  enum class DistanceUnit : uint8_t { Km, Mi };
+  enum class AltitudeUnit : uint8_t { Feet, Meters };
+  enum class SpeedUnit : uint8_t { Knots, Kmh, Mph };
+
   MatrixPanel_I2S_DMA *matrix_ = nullptr;
   bool rotate180_ = false;
+  bool clock24Hour_ = true;
+  DistanceUnit distanceUnit_ = DistanceUnit::Km;
+  AltitudeUnit altitudeUnit_ = AltitudeUnit::Feet;
+  SpeedUnit speedUnit_ = SpeedUnit::Knots;
 
   void clear();
   void text(int x, int y, uint16_t colour, const String &value,
