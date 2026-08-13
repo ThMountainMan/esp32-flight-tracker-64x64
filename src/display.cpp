@@ -125,8 +125,10 @@ void Display::showClock(bool networkOk, const String &sourceStatus) {
   text(4, 8, timeColour, String(timeBuf), 2);
 
   char dateBuf[9];
-  snprintf(dateBuf, sizeof(dateBuf), "%02d/%02d/%02d", tm_info.tm_mday,
-           tm_info.tm_mon + 1, tm_info.tm_year % 100);
+  int day  = tm_info.tm_mday % 100;
+  int mon  = (tm_info.tm_mon + 1) % 100;
+  int year = tm_info.tm_year % 100;
+  snprintf(dateBuf, sizeof(dateBuf), "%02d/%02d/%02d", day, mon, year);
   text(0, 30, 0xFFFF, String(dateBuf), 1);
 
   // Truncate status to fit one line at scale-1 (6px per char, 64px wide = 10 chars)
