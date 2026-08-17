@@ -44,6 +44,16 @@ pio run -e esp32dev -t upload
 pio device monitor -b 115200
 ```
 
+> **Production / release builds:** Use the `esp32-dev-release` or `esp32-s3-release`
+> environments when flashing a device for deployment. These disable verbose serial
+> logging (`-DCORE_DEBUG_LEVEL=0`), which saves additional flash space on top of the
+> size-optimisation flags (`-Os`) that apply to all environments.
+>
+> ```bash
+> pio run -e esp32-dev-release -t upload   # ESP32
+> pio run -e esp32-s3-release -t upload    # ESP32-S3
+> ```
+
 On first boot (or after recovery trigger), the device starts a temporary
 `FlightTracker-Setup-*` access point and captive portal so you can enter Wi-Fi,
 location, radius, brightness, and rotation from a phone or browser.
