@@ -27,6 +27,7 @@ std::vector<Aircraft> aircraft;
 String sourceStatus = "Starting";
 uint32_t lastPollMs = 0;
 uint32_t lastScreenMs = 0;
+uint32_t lastBrightnessCheckMs = 0;
 uint32_t recoveryButtonPressedAtMs = 0;
 uint8_t wifiFailures = 0;
 size_t selectedFlight = 0;
@@ -105,7 +106,8 @@ void setup() {
     wifiFailures = 0;
   }
   refreshFlights();
-  lastPollMs = lastScreenMs = millis();
+  display.applyScheduledBrightness(config);
+  lastPollMs = lastScreenMs = lastBrightnessCheckMs = millis();
 }
 
 void loop() {
@@ -140,6 +142,11 @@ void loop() {
   if (now - lastPollMs >= config.pollIntervalSeconds * 1000UL) {
     refreshFlights();
     lastPollMs = now;
+  }
+  // Check scheduled brightness once per minute (non-disruptive to refresh).
+  if (now - lastBrightnessCheckMs >= 60000UL || lastBrightnessCheckMs == 0) {
+    display.applyScheduledBrightness(config);
+    lastBrightnessCheckMs = now;
   }
   if (aircraft.empty()) {
     display.showClock(WiFi.status() == WL_CONNECTED, sourceStatus);

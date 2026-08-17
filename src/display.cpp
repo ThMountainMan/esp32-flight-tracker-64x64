@@ -262,6 +262,42 @@ void Display::showFlight(const Aircraft &aircraft, size_t index,
 // Private helpers
 // ---------------------------------------------------------------------------
 
+void Display::applyScheduledBrightness(const AppConfig &config) {
+  if (!matrix_) return;
+  if (!config.scheduleEnabled) {
+    matrix_->setBrightness8(config.brightness);
+    return;
+  }
+
+  time_t now = time(nullptr);
+  // If time has not been synced (time_t < some reasonable epoch), use fixed brightness.
+  if (now < 1000000000L) {
+    matrix_->setBrightness8(config.brightness);
+    return;
+  }
+
+  struct tm tm_info;
+  localtime_r(&now, &tm_info);
+  const uint16_t minuteOfDay =
+      static_cast<uint16_t>(tm_info.tm_hour * 60 + tm_info.tm_min);
+
+  // Determine whether we are in the "day" window.
+  // Day window: dayStartHhmm <= minuteOfDay < nightStartHhmm (wraps midnight if
+  // nightStart < dayStart, e.g. day starts at 06:00, night at 22:00).
+  bool isDay;
+  if (config.dayStartHhmm < config.nightStartHhmm) {
+    // Normal case: day is a contiguous range within one calendar day.
+    isDay = (minuteOfDay >= config.dayStartHhmm &&
+             minuteOfDay < config.nightStartHhmm);
+  } else {
+    // Wrapped case: day window spans midnight (e.g. day 22:00→06:00).
+    isDay = (minuteOfDay >= config.dayStartHhmm ||
+             minuteOfDay < config.nightStartHhmm);
+  }
+
+  matrix_->setBrightness8(isDay ? config.dayBrightness : config.nightBrightness);
+}
+
 void Display::clear() {
   if (matrix_) matrix_->clearScreen();
 }

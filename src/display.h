@@ -13,6 +13,7 @@ class Display {
   void showStatus(const char *title, const String &detail, uint16_t colour);
   void showClock(bool networkOk, const String &sourceStatus);
   void showFlight(const Aircraft &aircraft, size_t index, size_t total);
+  void applyScheduledBrightness(const AppConfig &config);
 
  private:
   enum class DistanceUnit : uint8_t { Km, Mi };

@@ -52,6 +52,13 @@ bool AppConfig::load() {
   maxAltitudeFeet = filters["max_altitude_ft"] | maxAltitudeFeet;
   pollIntervalSeconds = fr24["poll_interval_seconds"] | pollIntervalSeconds;
 
+  JsonObjectConst schedule = document["brightness_schedule"];
+  scheduleEnabled = schedule["enabled"] | scheduleEnabled;
+  dayBrightness = schedule["day_brightness"] | dayBrightness;
+  nightBrightness = schedule["night_brightness"] | nightBrightness;
+  dayStartHhmm = schedule["day_start_hhmm"] | dayStartHhmm;
+  nightStartHhmm = schedule["night_start_hhmm"] | nightStartHhmm;
+
   distanceUnit = String(display["distance_unit"] | distanceUnit.c_str());
   altitudeUnit = String(display["altitude_unit"] | altitudeUnit.c_str());
   speedUnit = String(display["speed_unit"] | speedUnit.c_str());
@@ -93,6 +100,19 @@ bool AppConfig::load() {
         minAltitudeFeet, maxAltitudeFeet);
     return false;
   }
+  if (scheduleEnabled) {
+    if (dayStartHhmm >= 1440 || nightStartHhmm >= 1440) {
+      Serial.println(
+          "[config] brightness_schedule HHMM values must be in range 0-1439.");
+      return false;
+    }
+    if (dayStartHhmm == nightStartHhmm) {
+      Serial.println(
+          "[config] brightness_schedule day_start_hhmm and night_start_hhmm "
+          "must differ.");
+      return false;
+    }
+  }
   return true;
 }
 
@@ -118,6 +138,11 @@ bool AppConfig::saveAtomic() const {
   document["filters"]["min_altitude_ft"] = minAltitudeFeet;
   document["filters"]["max_altitude_ft"] = maxAltitudeFeet;
   document["fr24"]["poll_interval_seconds"] = pollIntervalSeconds;
+  document["brightness_schedule"]["enabled"] = scheduleEnabled;
+  document["brightness_schedule"]["day_brightness"] = dayBrightness;
+  document["brightness_schedule"]["night_brightness"] = nightBrightness;
+  document["brightness_schedule"]["day_start_hhmm"] = dayStartHhmm;
+  document["brightness_schedule"]["night_start_hhmm"] = nightStartHhmm;
 
   File file = LittleFS.open("/config.json.tmp", "w");
   if (!file) {
