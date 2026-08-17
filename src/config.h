@@ -49,6 +49,11 @@ struct AppConfig {
   uint32_t routeCacheTtlSeconds = 86400;  ///< Cache TTL in seconds (default 24 h)
   String homeAirportIcao;          ///< Optional 4-char ICAO to highlight, e.g. "EGLL"
 
+  // Runtime settings portal password.  Username is always "admin".
+  // Defaults to the last 8 hex digits of the chip MAC if left empty in the
+  // config file.  Must be 4–64 characters when set explicitly.
+  String settingsPassword;
+
   bool load();
   bool saveAtomic() const;
 };

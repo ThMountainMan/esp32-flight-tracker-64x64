@@ -11,7 +11,9 @@
 #include "fr24_client.h"
 #include "provisioning_portal.h"
 #include "route_lookup.h"
+#include "settings_server.h"
 #include "weather_client.h"
+
 
 namespace {
 constexpr uint32_t kFlightScreenIntervalMs = 5000;
@@ -28,6 +30,7 @@ Fr24Client fr24;
 RouteLookup routeLookup;
 WeatherClient weatherClient;
 ProvisioningPortal provisioningPortal;
+SettingsServer settingsServer;
 std::vector<Aircraft> aircraft;
 WeatherData weatherData;
 char sourceStatus[32] = "Starting";
@@ -61,6 +64,7 @@ bool connectWifi() {
 
 void startProvisioning(bool hasFallbackConfig) {
   Serial.println("[provisioning] Entering provisioning mode.");
+  settingsServer.stop();
   const bool completed = provisioningPortal.run(config, display, kProvisioningTimeoutMs);
   if (!completed && !hasFallbackConfig) {
     Serial.println("[provisioning] No valid config available; restarting provisioning mode.");
@@ -127,6 +131,9 @@ void setup() {
   } else {
     wifiFailures = 0;
   }
+  if (WiFi.status() == WL_CONNECTED) {
+    settingsServer.begin(config, sourceStatus);
+  }
   refreshFlights();
   if (config.weatherEnabled) refreshWeather();
   display.applyScheduledBrightness(config);
@@ -159,6 +166,7 @@ void loop() {
       return;
     }
     wifiFailures = 0;
+    settingsServer.begin(config, sourceStatus);
   }
 
   const uint32_t now = millis();

@@ -80,6 +80,12 @@ String portalHtml(const AppConfig &config, const String &message, bool success) 
   html += F("<label>Night start (minutes past midnight, 0-1439)<input name='night_start_hhmm' type='number' min='0' max='1439' value='");
   html += String(config.nightStartHhmm);
   html += F("'></label><small>Example: 06:00 = 360, 22:00 = 1320. Requires NTP time sync.</small></fieldset>");
+  html += F("<fieldset><legend>Settings Portal Password</legend>");
+  html += F("<label>Password (username: admin, 4–64 chars; leave blank to use device default)"
+            "<input name='settings_password' type='password' minlength='4' maxlength='64'"
+            " autocomplete='new-password' placeholder='leave blank to use device default'></label>"
+            "<small>The device-default password is printed to serial as <code>[settings] default password: …</code>"
+            " on first boot.</small></fieldset>");
   html += F("<button type='submit'>Save and restart</button></form>");
   html += F("<p><small>After saving, the device restarts and joins your Wi-Fi network.</small></p></body></html>");
   return html;
@@ -201,6 +207,18 @@ bool ProvisioningPortal::run(AppConfig &config, Display &display, uint32_t timeo
       next.nightBrightness = static_cast<uint8_t>(nightBr);
       next.dayStartHhmm = static_cast<uint16_t>(dayStart);
       next.nightStartHhmm = static_cast<uint16_t>(nightStart);
+    }
+    // Settings portal password (optional; blank = keep default)
+    if (request->hasParam("settings_password", true)) {
+      const String pwd = request->getParam("settings_password", true)->value();
+      if (!pwd.isEmpty()) {
+        if (pwd.length() < 4 || pwd.length() > 64) {
+          sendPortalPage(request, candidate,
+                         "Settings password must be 4-64 characters.");
+          return;
+        }
+        next.settingsPassword = pwd;
+      }
     }
     if (!next.saveAtomic()) {
       sendPortalPage(request, candidate, "Failed to save configuration.");

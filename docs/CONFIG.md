@@ -52,6 +52,7 @@ The config uses nested JSON objects.
 | `brightness_schedule.night_brightness` | int | `8` | Panel brightness during the night window (0–255) |
 | `brightness_schedule.day_start_hhmm` | int | `360` | Start of day window in minutes past midnight (0–1439); `360` = 06:00 |
 | `brightness_schedule.night_start_hhmm` | int | `1320` | Start of night window in minutes past midnight (0–1439); `1320` = 22:00 |
+| `settings.password` | string | *(MAC-derived)* | Password for the runtime settings portal (username: `admin`; 4–64 chars; omit to use the per-device default) |
 
 ## Example
 
@@ -119,3 +120,4 @@ The config uses nested JSON objects.
 - FR24 altitude `0` (unknown altitude) is always retained by the altitude filter policy.
 - When `brightness_schedule.enabled` is `true`, `day_start_hhmm` and `night_start_hhmm` must be different and both in range 0–1439.
 - `day_brightness` and `night_brightness` follow the same 0–255 limits as `display.brightness`.
+- `settings.password` must be between 4 and 64 characters when provided.  If omitted the firmware uses the last 8 hex digits of the chip MAC as the default password, which is printed to serial on every boot as `[settings] Portal credentials: admin / <password>`.

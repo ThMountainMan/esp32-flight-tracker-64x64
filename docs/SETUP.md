@@ -56,6 +56,54 @@ back into provisioning mode so the device stays recoverable.
 With an already configured device, hold the **BOOT** button for 5 seconds to
 re-enter provisioning mode and update settings.
 
+## Runtime Settings (after first boot)
+
+Once connected to your Wi-Fi network the device runs a lightweight settings server
+on **port 80**. Open a browser to `http://<device-ip>/` to:
+
+- View live device status (Wi-Fi state, IP address, last FR24 refresh result, config validity).
+- Modify any supported configuration field without rebuilding or re-flashing.
+- Save configuration atomically and restart with the new settings.
+- Perform a **factory reset** (erase `/config.json` and re-enter provisioning mode).
+
+### Credentials
+
+The settings page is protected by HTTP Basic Auth:
+
+| Field | Value |
+|---|---|
+| Username | `admin` |
+| Password | last 8 hex digits of the chip MAC *(default)* |
+
+The active password is printed to the serial monitor on every boot:
+
+```
+[settings] Portal credentials: admin / a1b2c3d4
+```
+
+You can set a custom password in the **Settings Password** section of the portal,
+or via `settings.password` in `config.json`.  See [CONFIG.md](CONFIG.md).
+
+The device IP address is also printed on connection:
+
+```
+[wifi] Connected: 192.168.1.42
+[settings] Settings server listening on http://192.168.1.42/
+```
+
+A `GET /status` endpoint returns a JSON object that can be polled programmatically:
+
+```json
+{
+  "wifi_state": "connected",
+  "ip_address": "192.168.1.42",
+  "last_refresh": "FR24: 7 flights",
+  "config_valid": true
+}
+```
+
+For full reset and recovery procedures see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
 ## Upload LittleFS (config.json) — Optional manual pre-seed
 
 `config.json` is still not bundled in `firmware.bin`. If you prefer preloading
