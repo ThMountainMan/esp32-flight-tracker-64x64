@@ -160,14 +160,11 @@ void RouteCache::evictExpired(uint32_t ttlSeconds) {
   if (now < 1000000000L) return;  // Clock not synced; skip eviction.
 
   bool changed = false;
-  JsonArray::iterator it = entries.begin();
-  while (it != entries.end()) {
-    const uint32_t t = (*it)["t"] | 0u;
+  for (size_t i = entries.size(); i > 0; --i) {
+    const uint32_t t = entries[i - 1]["t"] | 0u;
     if (static_cast<uint32_t>(now) - t > ttlSeconds) {
-      it = entries.remove(it);
+      entries.remove(i - 1);
       changed = true;
-    } else {
-      ++it;
     }
   }
   if (!changed) return;
