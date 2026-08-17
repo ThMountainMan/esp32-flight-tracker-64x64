@@ -128,7 +128,7 @@ bool ProvisioningPortal::run(AppConfig &config, Display &display, uint32_t timeo
   dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
 
   Serial.printf("[provisioning] AP started: %s (%s)\n", apSsid.c_str(), apIp.toString().c_str());
-  display.showStatus("SETUP", apSsid, 0x07E0);
+  display.showStatus("SETUP", apSsid.c_str(), 0x07E0);
 
   auto redirectToRoot = [](AsyncWebServerRequest *request) {
     request->redirect("/");

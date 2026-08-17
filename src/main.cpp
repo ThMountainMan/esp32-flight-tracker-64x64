@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <LittleFS.h>
 #include <WiFi.h>
+#include <cstring>
 #include <time.h>
 
 #include <vector>
@@ -27,7 +28,7 @@ WeatherClient weatherClient;
 ProvisioningPortal provisioningPortal;
 std::vector<Aircraft> aircraft;
 WeatherData weatherData;
-String sourceStatus = "Starting";
+char sourceStatus[32] = "Starting";
 uint32_t lastPollMs = 0;
 uint32_t lastScreenMs = 0;
 uint32_t lastBrightnessCheckMs = 0;
@@ -68,16 +69,19 @@ void startProvisioning(bool hasFallbackConfig) {
 
 void refreshFlights() {
   if (WiFi.status() != WL_CONNECTED) {
-    sourceStatus = "WiFi disconnected";
+    strncpy(sourceStatus, "WiFi disconnected", sizeof(sourceStatus) - 1);
+    sourceStatus[sizeof(sourceStatus) - 1] = '\0';
     return;
   }
   String error;
   if (fr24.fetchNearby(config, aircraft, error)) {
-    sourceStatus = "FR24: " + String(aircraft.size()) + " flights";
+    snprintf(sourceStatus, sizeof(sourceStatus), "FR24: %u flights",
+             (unsigned)aircraft.size());
     if (selectedFlight >= aircraft.size()) selectedFlight = 0;
   } else {
-    sourceStatus = error;
-    Serial.printf("[fr24] %s\n", error.c_str());
+    strncpy(sourceStatus, error.c_str(), sizeof(sourceStatus) - 1);
+    sourceStatus[sizeof(sourceStatus) - 1] = '\0';
+    Serial.printf("[fr24] %s\n", sourceStatus);
   }
 }
 
