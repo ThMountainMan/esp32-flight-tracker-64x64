@@ -56,6 +56,36 @@ back into provisioning mode so the device stays recoverable.
 With an already configured device, hold the **BOOT** button for 5 seconds to
 re-enter provisioning mode and update settings.
 
+## Runtime Settings (after first boot)
+
+Once connected to your Wi-Fi network the device runs a lightweight settings server
+on **port 80**. Open a browser to `http://<device-ip>/` to:
+
+- View live device status (Wi-Fi state, IP address, last FR24 refresh result, config validity).
+- Modify any supported configuration field without rebuilding or re-flashing.
+- Save configuration atomically and restart with the new settings.
+- Perform a **factory reset** (erase `/config.json` and re-enter provisioning mode).
+
+The device IP address is printed in the serial monitor on every successful connection:
+
+```
+[wifi] Connected: 192.168.1.42
+[settings] Settings server listening on http://192.168.1.42/
+```
+
+A `GET /status` endpoint returns a JSON object that can be polled programmatically:
+
+```json
+{
+  "wifi_state": "connected",
+  "ip_address": "192.168.1.42",
+  "last_refresh": "FR24: 7 flights",
+  "config_valid": true
+}
+```
+
+For full reset and recovery procedures see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
 ## Upload LittleFS (config.json) — Optional manual pre-seed
 
 `config.json` is still not bundled in `firmware.bin`. If you prefer preloading
