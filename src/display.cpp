@@ -164,7 +164,7 @@ void Display::showClock(bool networkOk, const char *sourceStatus) {
 
   // Truncate status to fit one line at scale-1 (6px per char, 64px wide = 10 chars)
   char status[11];
-  strncpy(status, sourceStatus.c_str(), 10);
+  strncpy(status, sourceStatus ? sourceStatus : "", 10);
   status[10] = '\0';
   text(0, 44, matrix_->color565(180, 180, 0), status, 1);
 }
