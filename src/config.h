@@ -20,6 +20,14 @@ struct AppConfig {
   int maxAltitudeFeet = 0;
   bool rotate180 = false;
 
+  // Weather (optional).  Disabled by default.  Set weatherEnabled to true and
+  // provide a valid OpenWeatherMap API key to enable the weather idle scene.
+  // The API key is never stored in source code or included in release assets.
+  // refreshSeconds is clamped to [300, 3600] at load time.
+  bool weatherEnabled = false;
+  String weatherApiKey;                   // empty → feature disabled
+  uint32_t weatherRefreshSeconds = 600;   // 10-minute default
+
   // Scheduled brightness (optional).  When scheduleEnabled is true the
   // firmware switches between dayBrightness and nightBrightness according to
   // the HHMM window boundaries below.  Values are in the range 0-255.
@@ -30,6 +38,16 @@ struct AppConfig {
   uint8_t nightBrightness = 8;
   uint16_t dayStartHhmm = 360;    // 06:00
   uint16_t nightStartHhmm = 1320; // 22:00
+
+  // Route / airport lookup (optional).
+  // When routeLookupEnabled is true, RouteLookup will attempt to resolve
+  // origin/destination ICAO codes for each visible aircraft via the URL
+  // template in routeLookupUrl.  The placeholder {callsign} is replaced with
+  // the flight callsign before each request.
+  bool routeLookupEnabled = false;
+  String routeLookupUrl;           ///< URL template, e.g. "http://pi/route?cs={callsign}"
+  uint32_t routeCacheTtlSeconds = 86400;  ///< Cache TTL in seconds (default 24 h)
+  String homeAirportIcao;          ///< Optional 4-char ICAO to highlight, e.g. "EGLL"
 
   // Runtime settings portal password.  Username is always "admin".
   // Defaults to the last 8 hex digits of the chip MAC if left empty in the

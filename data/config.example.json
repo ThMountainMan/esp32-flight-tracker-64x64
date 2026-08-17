@@ -30,5 +30,16 @@
     "night_brightness": 8,
     "day_start_hhmm": 360,
     "night_start_hhmm": 1320
+  },
+  "weather": {
+    "enabled": false,
+    "api_key": "REPLACE_WITH_OPENWEATHERMAP_API_KEY",
+    "refresh_seconds": 600
+  },
+  "route_lookup": {
+    "enabled": false,
+    "url": "http://YOUR_TAR1090_HOST/data/flightaware/{callsign}.json",
+    "cache_ttl_seconds": 86400,
+    "home_airport": ""
   }
 }

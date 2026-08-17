@@ -170,7 +170,7 @@ void Display::showClock(bool networkOk, const char *sourceStatus) {
 }
 
 void Display::showFlight(const Aircraft &aircraft, size_t index,
-                         size_t total) {
+                         size_t total, const AppConfig &config) {
   if (!matrix_) return;
   clear();
 
@@ -259,12 +259,79 @@ void Display::showFlight(const Aircraft &aircraft, size_t index,
   text(30, 40, matrix_->color565(255, 220, 80), distBuf, 1);
 
   // -----------------------------------------------------------------------
+  // Route / airport information (row 44-52, below heading)
+  // Only rendered when route data has been resolved.
+  // Home-airport ICAO codes are highlighted in amber.
+  // -----------------------------------------------------------------------
+  if (aircraft.routeState == RouteState::Resolved &&
+      aircraft.origin[0] != '\0' && aircraft.destination[0] != '\0') {
+    // Determine colours: highlight home airport if configured.
+    const bool orgIsHome = !config.homeAirportIcao.isEmpty() &&
+                           config.homeAirportIcao.equalsIgnoreCase(aircraft.origin);
+    const bool dstIsHome = !config.homeAirportIcao.isEmpty() &&
+                           config.homeAirportIcao.equalsIgnoreCase(aircraft.destination);
+
+    const uint16_t orgColour = orgIsHome
+        ? matrix_->color565(255, 200, 0)   // amber = home
+        : matrix_->color565(200, 200, 200);
+    const uint16_t dstColour = dstIsHome
+        ? matrix_->color565(255, 200, 0)
+        : matrix_->color565(200, 200, 200);
+    const uint16_t arrowColour = matrix_->color565(120, 120, 120);
+
+    text(0, 44, orgColour, aircraft.origin, 1);
+    text(25, 44, arrowColour, ">", 1);
+    text(31, 44, dstColour, aircraft.destination, 1);
+  } else if (aircraft.routeState == RouteState::Pending) {
+    text(0, 44, matrix_->color565(100, 100, 100), "...", 1);
+  } else {
+    // No route data: show heading and distance on row 40 (existing layout).
+    // Already rendered above, nothing additional to do.
+  }
+
+  // -----------------------------------------------------------------------
   // Page indicator (bottom row): e.g.  "2/5"
   // -----------------------------------------------------------------------
   char pageBuf[8];
   snprintf(pageBuf, sizeof(pageBuf), "%u/%u",
            (unsigned)(index + 1), (unsigned)total);
   text(0, 54, matrix_->color565(120, 120, 120), pageBuf, 1);
+}
+
+void Display::showWeather(const WeatherData &weather, bool tempInCelsius,
+                          const char *sourceStatus) {
+  if (!matrix_) return;
+  clear();
+
+  // Header label
+  text(0, 0, matrix_->color565(0, 180, 255), "WEATHER", 1);
+
+  if (!weather.valid) {
+    text(0, 14, matrix_->color565(200, 80, 80), "No data", 1);
+  } else {
+    // Temperature line
+    float temp = weather.tempCelsius;
+    const char *unit = "C";
+    if (!tempInCelsius) {
+      temp = weather.tempCelsius * 9.0F / 5.0F + 32.0F;
+      unit = "F";
+    }
+    char tempBuf[10];
+    snprintf(tempBuf, sizeof(tempBuf), "%+.1f*%s", temp, unit);
+    text(0, 14, matrix_->color565(255, 220, 80), tempBuf, 1);
+
+    // Conditions (truncated to fit 64 px at text size 1, 10 chars)
+    char descBuf[11];
+    strncpy(descBuf, weather.description.c_str(), 10);
+    descBuf[10] = '\0';
+    text(0, 28, 0xFFFF, descBuf, 1);
+  }
+
+  // Source status (bottom, same as clock scene)
+  char status[11];
+  strncpy(status, sourceStatus ? sourceStatus : "", 10);
+  status[10] = '\0';
+  text(0, 44, matrix_->color565(180, 180, 0), status, 1);
 }
 
 // ---------------------------------------------------------------------------

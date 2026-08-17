@@ -80,6 +80,26 @@ bool AppConfig::load() {
   dayStartHhmm = schedule["day_start_hhmm"] | dayStartHhmm;
   nightStartHhmm = schedule["night_start_hhmm"] | nightStartHhmm;
 
+  JsonObjectConst route = document["route_lookup"];
+  routeLookupEnabled = route["enabled"] | routeLookupEnabled;
+  routeLookupUrl = String(route["url"] | routeLookupUrl.c_str());
+  routeCacheTtlSeconds = route["cache_ttl_seconds"] | routeCacheTtlSeconds;
+  homeAirportIcao = String(route["home_airport"] | homeAirportIcao.c_str());
+  homeAirportIcao.toUpperCase();
+
+  JsonObjectConst weather = document["weather"];
+  weatherEnabled = weather["enabled"] | weatherEnabled;
+  weatherApiKey = String(weather["api_key"] | "");
+  weatherRefreshSeconds = weather["refresh_seconds"] | weatherRefreshSeconds;
+  // Clamp refresh interval to a safe range (5 min – 1 hour).
+  if (weatherRefreshSeconds < 300) weatherRefreshSeconds = 300;
+  if (weatherRefreshSeconds > 3600) weatherRefreshSeconds = 3600;
+  // An enabled weather section without an API key is a misconfiguration.
+  if (weatherEnabled && weatherApiKey.isEmpty()) {
+    Serial.println("[config] weather.enabled is true but weather.api_key is empty; disabling weather.");
+    weatherEnabled = false;
+  }
+
   distanceUnit = String(display["distance_unit"] | distanceUnit.c_str());
   altitudeUnit = String(display["altitude_unit"] | altitudeUnit.c_str());
   speedUnit = String(display["speed_unit"] | speedUnit.c_str());
@@ -177,6 +197,13 @@ bool AppConfig::saveAtomic() const {
   document["brightness_schedule"]["night_brightness"] = nightBrightness;
   document["brightness_schedule"]["day_start_hhmm"] = dayStartHhmm;
   document["brightness_schedule"]["night_start_hhmm"] = nightStartHhmm;
+  document["route_lookup"]["enabled"] = routeLookupEnabled;
+  document["route_lookup"]["url"] = routeLookupUrl;
+  document["route_lookup"]["cache_ttl_seconds"] = routeCacheTtlSeconds;
+  document["route_lookup"]["home_airport"] = homeAirportIcao;
+  document["weather"]["enabled"] = weatherEnabled;
+  document["weather"]["api_key"] = weatherApiKey;
+  document["weather"]["refresh_seconds"] = weatherRefreshSeconds;
   // Only persist the password if the user has set a custom one (non-empty
   // and different from the MAC-derived default).  This keeps the default
   // credential auto-updating if the config file is regenerated on a new chip.
