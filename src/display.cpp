@@ -16,6 +16,22 @@ constexpr float kKmToMiles = 0.621371F;
 constexpr float kFeetToMeters = 0.3048F;
 constexpr float kKnotsToKmh = 1.852F;
 constexpr float kKnotsToMph = 1.150779F;
+constexpr int kCharWidth = 6;
+constexpr int kPanelWidth = MATRIX_WIDTH;
+
+int centeredX(const char *value, uint8_t size = 1) {
+  if (value == nullptr || value[0] == '\0') return 0;
+  const int textWidth = static_cast<int>(strlen(value)) * kCharWidth * size;
+  const int x = (kPanelWidth - textWidth) / 2;
+  return (x < 0) ? 0 : x;
+}
+
+int rightAlignedX(const char *value, uint8_t size = 1, int rightPadding = 0) {
+  if (value == nullptr || value[0] == '\0') return kPanelWidth - rightPadding;
+  const int textWidth = static_cast<int>(strlen(value)) * kCharWidth * size;
+  const int x = kPanelWidth - textWidth - rightPadding;
+  return (x < 0) ? 0 : x;
+}
 }
 
 // ---------------------------------------------------------------------------
@@ -113,19 +129,21 @@ bool Display::begin(const AppConfig &config) {
 void Display::showSplash() {
   if (!matrix_) return;
   clear();
-  // Simple splash: project name centred on the panel
-  matrix_->setTextColor(matrix_->color565(0, 180, 255));
-  text(4, 10, matrix_->color565(0, 180, 255), "FLIGHT");
-  text(4, 22, matrix_->color565(255, 200, 0), "TRACKER");
-  text(8, 34, matrix_->color565(200, 200, 200), "64x64");
+  text(centeredX("FLIGHT"), 8, matrix_->color565(0, 180, 255), "FLIGHT", 1);
+  text(centeredX("TRACKER"), 20, matrix_->color565(255, 200, 0), "TRACKER", 1);
+  text(centeredX("64x64", 2), 38, matrix_->color565(200, 200, 200), "64x64", 2);
 }
 
 void Display::showStatus(const char *title, const char *detail,
                          uint16_t colour) {
   if (!matrix_) return;
   clear();
-  text(0, 2, colour, title, 1);
-  text(0, 14, 0xFFFF, detail, 1);
+  text(centeredX(title, 2), 20, colour, title, 2);
+
+  char detailLine[11];
+  strncpy(detailLine, detail ? detail : "", 10);
+  detailLine[10] = '\0';
+  text(centeredX(detailLine), 46, 0xFFFF, detailLine, 1);
 }
 
 void Display::showClock(bool networkOk, const char *sourceStatus) {
@@ -148,9 +166,9 @@ void Display::showClock(bool networkOk, const char *sourceStatus) {
 
   uint16_t timeColour =
       networkOk ? matrix_->color565(0, 220, 255) : matrix_->color565(180, 180, 180);
-  text(4, 8, timeColour, timeBuf, 2);
+  text(centeredX(timeBuf, 2), 18, timeColour, timeBuf, 2);
   if (!clock24Hour_) {
-    text(50, 24, matrix_->color565(180, 180, 180),
+    text(rightAlignedX("PM"), 34, matrix_->color565(180, 180, 180),
          (tm_info.tm_hour >= 12) ? "PM" : "AM", 1);
   }
 
@@ -160,13 +178,13 @@ void Display::showClock(bool networkOk, const char *sourceStatus) {
   if (strftime(dateBuf, sizeof(dateBuf), "%d/%m/%y", &tm_info) == 0) {
     snprintf(dateBuf, sizeof(dateBuf), "--/--/--");
   }
-  text(0, 30, 0xFFFF, dateBuf, 1);
+  text(centeredX(dateBuf), 40, 0xFFFF, dateBuf, 1);
 
   // Truncate status to fit one line at scale-1 (6px per char, 64px wide = 10 chars)
   char status[11];
   strncpy(status, sourceStatus ? sourceStatus : "", 10);
   status[10] = '\0';
-  text(0, 44, matrix_->color565(180, 180, 0), status, 1);
+  text(centeredX(status), 54, matrix_->color565(180, 180, 0), status, 1);
 }
 
 void Display::showFlight(const Aircraft &aircraft, size_t index,
@@ -207,9 +225,9 @@ void Display::showFlight(const Aircraft &aircraft, size_t index,
   // -----------------------------------------------------------------------
   // Callsign / flight number (top-right area, starting at x=18)
   // -----------------------------------------------------------------------
-  char callsign[8];
-  strncpy(callsign, aircraft.callsign, 7);
-  callsign[7] = '\0';
+  char callsign[7];
+  strncpy(callsign, aircraft.callsign, 6);
+  callsign[6] = '\0';
   text(18, 0, 0xFFFF, callsign, 1);
 
   // -----------------------------------------------------------------------
@@ -242,11 +260,11 @@ void Display::showFlight(const Aircraft &aircraft, size_t index,
   }
   char spdBuf[12];
   snprintf(spdBuf, sizeof(spdBuf), "S%d%s", speedValue, speedSuffix);
-  text(0, 30, matrix_->color565(100, 200, 255), spdBuf, 1);
+  text(33, 20, matrix_->color565(100, 200, 255), spdBuf, 1);
 
   char hdgBuf[8];
   snprintf(hdgBuf, sizeof(hdgBuf), "H%03d", aircraft.headingDegrees);
-  text(0, 40, matrix_->color565(180, 180, 180), hdgBuf, 1);
+  text(0, 30, matrix_->color565(180, 180, 180), hdgBuf, 1);
 
   float distanceValue = aircraft.distanceKm;
   const char *distanceSuffix = "km";
@@ -256,7 +274,7 @@ void Display::showFlight(const Aircraft &aircraft, size_t index,
   }
   char distBuf[12];
   snprintf(distBuf, sizeof(distBuf), "%.1f%s", distanceValue, distanceSuffix);
-  text(30, 40, matrix_->color565(255, 220, 80), distBuf, 1);
+  text(33, 30, matrix_->color565(255, 220, 80), distBuf, 1);
 
   // -----------------------------------------------------------------------
   // Route / airport information (row 44-52, below heading)
@@ -279,11 +297,11 @@ void Display::showFlight(const Aircraft &aircraft, size_t index,
         : matrix_->color565(200, 200, 200);
     const uint16_t arrowColour = matrix_->color565(120, 120, 120);
 
-    text(0, 44, orgColour, aircraft.origin, 1);
-    text(25, 44, arrowColour, ">", 1);
-    text(31, 44, dstColour, aircraft.destination, 1);
+    text(3, 44, orgColour, aircraft.origin, 1);
+    text(28, 44, arrowColour, ">", 1);
+    text(36, 44, dstColour, aircraft.destination, 1);
   } else if (aircraft.routeState == RouteState::Pending) {
-    text(0, 44, matrix_->color565(100, 100, 100), "...", 1);
+    text(centeredX("Route..."), 44, matrix_->color565(100, 100, 100), "Route...", 1);
   } else {
     // No route data: show heading and distance on row 40 (existing layout).
     // Already rendered above, nothing additional to do.
@@ -295,7 +313,7 @@ void Display::showFlight(const Aircraft &aircraft, size_t index,
   char pageBuf[8];
   snprintf(pageBuf, sizeof(pageBuf), "%u/%u",
            (unsigned)(index + 1), (unsigned)total);
-  text(0, 54, matrix_->color565(120, 120, 120), pageBuf, 1);
+  text(rightAlignedX(pageBuf), 54, matrix_->color565(120, 120, 120), pageBuf, 1);
 }
 
 void Display::showWeather(const WeatherData &weather, bool tempInCelsius,
@@ -304,10 +322,10 @@ void Display::showWeather(const WeatherData &weather, bool tempInCelsius,
   clear();
 
   // Header label
-  text(0, 0, matrix_->color565(0, 180, 255), "WEATHER", 1);
+  text(centeredX("WEATHER"), 4, matrix_->color565(0, 180, 255), "WEATHER", 1);
 
   if (!weather.valid) {
-    text(0, 14, matrix_->color565(200, 80, 80), "No data", 1);
+    text(centeredX("No data", 2), 24, matrix_->color565(200, 80, 80), "No data", 2);
   } else {
     // Temperature line
     float temp = weather.tempCelsius;
@@ -316,22 +334,23 @@ void Display::showWeather(const WeatherData &weather, bool tempInCelsius,
       temp = weather.tempCelsius * 9.0F / 5.0F + 32.0F;
       unit = "F";
     }
-    char tempBuf[10];
-    snprintf(tempBuf, sizeof(tempBuf), "%+.1f*%s", temp, unit);
-    text(0, 14, matrix_->color565(255, 220, 80), tempBuf, 1);
+    char tempBuf[8];
+    snprintf(tempBuf, sizeof(tempBuf), "%d%s",
+             static_cast<int>(temp + (temp >= 0 ? 0.5F : -0.5F)), unit);
+    text(centeredX(tempBuf, 2), 24, matrix_->color565(255, 220, 80), tempBuf, 2);
 
     // Conditions (truncated to fit 64 px at text size 1, 10 chars)
     char descBuf[11];
     strncpy(descBuf, weather.description.c_str(), 10);
     descBuf[10] = '\0';
-    text(0, 28, 0xFFFF, descBuf, 1);
+    text(centeredX(descBuf), 46, 0xFFFF, descBuf, 1);
   }
 
   // Source status (bottom, same as clock scene)
   char status[11];
   strncpy(status, sourceStatus ? sourceStatus : "", 10);
   status[10] = '\0';
-  text(0, 44, matrix_->color565(180, 180, 0), status, 1);
+  text(centeredX(status), 56, matrix_->color565(180, 180, 0), status, 1);
 }
 
 // ---------------------------------------------------------------------------

@@ -52,13 +52,13 @@ location, radius, brightness, and rotation from a phone or browser.
 
 ```text
 ┌────────────────────────────────────────────────┐
-│ badge   BAW123                         1/3      │
+│ badge   BAW123                            1/3   │
 │         A320                                   │
 ├────────────────────────────────────────────────┤
-│ A10000ft              S450kt                    │
-│ H270                  12.4km                    │
+│ A10000ft             S450kt                     │
+│ H270                 12.4km                     │
 ├────────────────────────────────────────────────┤
-│ FlightRadar24 • refreshes every 60 seconds     │
+│ EGLL > KJFK                                    │
 └────────────────────────────────────────────────┘
 ```
 
