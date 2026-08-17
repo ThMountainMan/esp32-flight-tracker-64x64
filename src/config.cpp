@@ -5,10 +5,20 @@
 
 namespace {
 bool valuesAreInRange(const AppConfig &config) {
-  return !(config.latitude < -90.0F || config.latitude > 90.0F ||
-           config.longitude < -180.0F || config.longitude > 180.0F ||
-           config.radiusKm <= 0.0F || config.radiusKm > 150.0F ||
-           config.pollIntervalSeconds < 30 || config.pollIntervalSeconds > 3600);
+  if (config.latitude < -90.0F || config.latitude > 90.0F ||
+      config.longitude < -180.0F || config.longitude > 180.0F ||
+      config.radiusKm <= 0.0F || config.radiusKm > 150.0F ||
+      config.pollIntervalSeconds < 30 || config.pollIntervalSeconds > 3600 ||
+      config.flightScreenSeconds < 2 || config.flightScreenSeconds > 60 ||
+      config.minAltitudeFeet < 0 || config.minAltitudeFeet > 60000 ||
+      config.maxAltitudeFeet < 0 || config.maxAltitudeFeet > 60000) {
+    return false;
+  }
+  if (config.minAltitudeFeet > 0 && config.maxAltitudeFeet > 0 &&
+      config.minAltitudeFeet > config.maxAltitudeFeet) {
+    return false;
+  }
+  return true;
 }
 }  // namespace
 

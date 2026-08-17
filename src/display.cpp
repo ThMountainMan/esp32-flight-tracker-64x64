@@ -6,6 +6,7 @@
 #include "display.h"
 
 #include <Arduino.h>
+#include <cstring>
 
 #include "airlines.h"
 #include "fr24_client.h"
@@ -119,15 +120,15 @@ void Display::showSplash() {
   text(8, 34, matrix_->color565(200, 200, 200), "64x64");
 }
 
-void Display::showStatus(const char *title, const String &detail,
+void Display::showStatus(const char *title, const char *detail,
                          uint16_t colour) {
   if (!matrix_) return;
   clear();
-  text(0, 2, colour, String(title), 1);
+  text(0, 2, colour, title, 1);
   text(0, 14, 0xFFFF, detail, 1);
 }
 
-void Display::showClock(bool networkOk, const String &sourceStatus) {
+void Display::showClock(bool networkOk, const char *sourceStatus) {
   if (!matrix_) return;
   clear();
 
@@ -147,7 +148,7 @@ void Display::showClock(bool networkOk, const String &sourceStatus) {
 
   uint16_t timeColour =
       networkOk ? matrix_->color565(0, 220, 255) : matrix_->color565(180, 180, 180);
-  text(4, 8, timeColour, String(timeBuf), 2);
+  text(4, 8, timeColour, timeBuf, 2);
   if (!clock24Hour_) {
     text(50, 24, matrix_->color565(180, 180, 180),
          (tm_info.tm_hour >= 12) ? "PM" : "AM", 1);
@@ -159,11 +160,12 @@ void Display::showClock(bool networkOk, const String &sourceStatus) {
   if (strftime(dateBuf, sizeof(dateBuf), "%d/%m/%y", &tm_info) == 0) {
     snprintf(dateBuf, sizeof(dateBuf), "--/--/--");
   }
-  text(0, 30, 0xFFFF, String(dateBuf), 1);
+  text(0, 30, 0xFFFF, dateBuf, 1);
 
   // Truncate status to fit one line at scale-1 (6px per char, 64px wide = 10 chars)
-  String status = sourceStatus;
-  if (status.length() > 10) status = status.substring(0, 10);
+  char status[11];
+  strncpy(status, sourceStatus ? sourceStatus : "", 10);
+  status[10] = '\0';
   text(0, 44, matrix_->color565(180, 180, 0), status, 1);
 }
 
@@ -190,25 +192,30 @@ void Display::showFlight(const Aircraft &aircraft, size_t index,
     // Fallback: coloured badge with 2-letter initials
     uint16_t bg = airlineColour(aircraft.airlineIcao);
     fillRect(0, 0, kIconSize, kIconSize, bg);
-    String badge = airlineBadgeText(aircraft.airlineIcao);
     // Contrasting colour: white unless bg is very bright
     uint16_t fg = (bg > 0xC618) ? 0x0000 : 0xFFFF;
+    char badge[3] = {'\0', '\0', '\0'};
+    if (aircraft.airlineIcao[0] != '\0' && aircraft.airlineIcao[1] != '\0') {
+      badge[0] = aircraft.airlineIcao[0];
+      badge[1] = aircraft.airlineIcao[1];
+    } else {
+      badge[0] = '-'; badge[1] = '-';
+    }
     text(1, 4, fg, badge, 1);
   }
 
   // -----------------------------------------------------------------------
   // Callsign / flight number (top-right area, starting at x=18)
   // -----------------------------------------------------------------------
-  String callsign = aircraft.callsign;
-  if (callsign.length() > 7) callsign = callsign.substring(0, 7);
+  char callsign[8];
+  strncpy(callsign, aircraft.callsign, 7);
+  callsign[7] = '\0';
   text(18, 0, 0xFFFF, callsign, 1);
 
   // -----------------------------------------------------------------------
   // Aircraft type
   // -----------------------------------------------------------------------
-  String type = aircraft.type;
-  if (type.length() > 7) type = type.substring(0, 7);
-  text(18, 10, matrix_->color565(180, 180, 180), type, 1);
+  text(18, 10, matrix_->color565(180, 180, 180), aircraft.type, 1);
 
   // -----------------------------------------------------------------------
   // Altitude and speed (rows 20-30)
@@ -222,7 +229,7 @@ void Display::showFlight(const Aircraft &aircraft, size_t index,
   }
   char altBuf[12];
   snprintf(altBuf, sizeof(altBuf), "A%d%s", altitudeValue, altitudeSuffix);
-  text(0, 20, matrix_->color565(0, 220, 120), String(altBuf), 1);
+  text(0, 20, matrix_->color565(0, 220, 120), altBuf, 1);
 
   int speedValue = aircraft.speedKnots;
   const char *speedSuffix = "kt";
@@ -235,11 +242,11 @@ void Display::showFlight(const Aircraft &aircraft, size_t index,
   }
   char spdBuf[12];
   snprintf(spdBuf, sizeof(spdBuf), "S%d%s", speedValue, speedSuffix);
-  text(0, 30, matrix_->color565(100, 200, 255), String(spdBuf), 1);
+  text(0, 30, matrix_->color565(100, 200, 255), spdBuf, 1);
 
   char hdgBuf[8];
   snprintf(hdgBuf, sizeof(hdgBuf), "H%03d", aircraft.headingDegrees);
-  text(0, 40, matrix_->color565(180, 180, 180), String(hdgBuf), 1);
+  text(0, 40, matrix_->color565(180, 180, 180), hdgBuf, 1);
 
   float distanceValue = aircraft.distanceKm;
   const char *distanceSuffix = "km";
@@ -249,13 +256,15 @@ void Display::showFlight(const Aircraft &aircraft, size_t index,
   }
   char distBuf[12];
   snprintf(distBuf, sizeof(distBuf), "%.1f%s", distanceValue, distanceSuffix);
-  text(30, 40, matrix_->color565(255, 220, 80), String(distBuf), 1);
+  text(30, 40, matrix_->color565(255, 220, 80), distBuf, 1);
 
   // -----------------------------------------------------------------------
   // Page indicator (bottom row): e.g.  "2/5"
   // -----------------------------------------------------------------------
-  String page = String(index + 1) + "/" + String(total);
-  text(0, 54, matrix_->color565(120, 120, 120), page, 1);
+  char pageBuf[8];
+  snprintf(pageBuf, sizeof(pageBuf), "%u/%u",
+           (unsigned)(index + 1), (unsigned)total);
+  text(0, 54, matrix_->color565(120, 120, 120), pageBuf, 1);
 }
 
 // ---------------------------------------------------------------------------
@@ -302,7 +311,7 @@ void Display::clear() {
   if (matrix_) matrix_->clearScreen();
 }
 
-void Display::text(int x, int y, uint16_t colour, const String &value,
+void Display::text(int x, int y, uint16_t colour, const char *value,
                    uint8_t size) {
   if (!matrix_) return;
   matrix_->setTextSize(size);
