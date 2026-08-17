@@ -170,7 +170,7 @@ void Display::showClock(bool networkOk, const char *sourceStatus) {
 }
 
 void Display::showFlight(const Aircraft &aircraft, size_t index,
-                         size_t total) {
+                         size_t total, const AppConfig &config) {
   if (!matrix_) return;
   clear();
 
@@ -257,6 +257,37 @@ void Display::showFlight(const Aircraft &aircraft, size_t index,
   char distBuf[12];
   snprintf(distBuf, sizeof(distBuf), "%.1f%s", distanceValue, distanceSuffix);
   text(30, 40, matrix_->color565(255, 220, 80), distBuf, 1);
+
+  // -----------------------------------------------------------------------
+  // Route / airport information (row 44-52, below heading)
+  // Only rendered when route data has been resolved.
+  // Home-airport ICAO codes are highlighted in amber.
+  // -----------------------------------------------------------------------
+  if (aircraft.routeState == RouteState::Resolved &&
+      aircraft.origin[0] != '\0' && aircraft.destination[0] != '\0') {
+    // Determine colours: highlight home airport if configured.
+    const bool orgIsHome = !config.homeAirportIcao.isEmpty() &&
+                           config.homeAirportIcao.equalsIgnoreCase(aircraft.origin);
+    const bool dstIsHome = !config.homeAirportIcao.isEmpty() &&
+                           config.homeAirportIcao.equalsIgnoreCase(aircraft.destination);
+
+    const uint16_t orgColour = orgIsHome
+        ? matrix_->color565(255, 200, 0)   // amber = home
+        : matrix_->color565(200, 200, 200);
+    const uint16_t dstColour = dstIsHome
+        ? matrix_->color565(255, 200, 0)
+        : matrix_->color565(200, 200, 200);
+    const uint16_t arrowColour = matrix_->color565(120, 120, 120);
+
+    text(0, 44, orgColour, aircraft.origin, 1);
+    text(25, 44, arrowColour, ">", 1);
+    text(31, 44, dstColour, aircraft.destination, 1);
+  } else if (aircraft.routeState == RouteState::Pending) {
+    text(0, 44, matrix_->color565(100, 100, 100), "...", 1);
+  } else {
+    // No route data: show heading and distance on row 40 (existing layout).
+    // Already rendered above, nothing additional to do.
+  }
 
   // -----------------------------------------------------------------------
   // Page indicator (bottom row): e.g.  "2/5"

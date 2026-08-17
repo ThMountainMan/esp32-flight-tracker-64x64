@@ -12,7 +12,8 @@ class Display {
   void showSplash();
   void showStatus(const char *title, const char *detail, uint16_t colour);
   void showClock(bool networkOk, const char *sourceStatus);
-  void showFlight(const Aircraft &aircraft, size_t index, size_t total);
+  void showFlight(const Aircraft &aircraft, size_t index, size_t total,
+                  const AppConfig &config);
   void applyScheduledBrightness(const AppConfig &config);
 
  private:

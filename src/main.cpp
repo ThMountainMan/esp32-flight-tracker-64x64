@@ -10,6 +10,7 @@
 #include "display.h"
 #include "fr24_client.h"
 #include "provisioning_portal.h"
+#include "route_lookup.h"
 
 namespace {
 constexpr uint32_t kFlightScreenIntervalMs = 5000;
@@ -23,6 +24,7 @@ constexpr char kNtpServer[] = "pool.ntp.org";
 AppConfig config;
 Display display;
 Fr24Client fr24;
+RouteLookup routeLookup;
 ProvisioningPortal provisioningPortal;
 std::vector<Aircraft> aircraft;
 char sourceStatus[32] = "Starting";
@@ -72,6 +74,7 @@ void refreshFlights() {
     snprintf(sourceStatus, sizeof(sourceStatus), "FR24: %u flights",
              (unsigned)aircraft.size());
     if (selectedFlight >= aircraft.size()) selectedFlight = 0;
+    routeLookup.resetStates(aircraft);
   } else {
     strncpy(sourceStatus, error.c_str(), sizeof(sourceStatus) - 1);
     sourceStatus[sizeof(sourceStatus) - 1] = '\0';
@@ -147,6 +150,10 @@ void loop() {
     refreshFlights();
     lastPollMs = now;
   }
+  // Non-blocking route lookup tick (processes at most one aircraft per call).
+  if (!aircraft.empty()) {
+    routeLookup.tick(config, aircraft);
+  }
   // Check scheduled brightness once per minute (non-disruptive to refresh).
   if (now - lastBrightnessCheckMs >= 60000UL || lastBrightnessCheckMs == 0) {
     display.applyScheduledBrightness(config);
@@ -155,7 +162,7 @@ void loop() {
   if (aircraft.empty()) {
     display.showClock(WiFi.status() == WL_CONNECTED, sourceStatus);
   } else if (now - lastScreenMs >= config.flightScreenSeconds * 1000UL) {
-    display.showFlight(aircraft[selectedFlight], selectedFlight, aircraft.size());
+    display.showFlight(aircraft[selectedFlight], selectedFlight, aircraft.size(), config);
     selectedFlight = (selectedFlight + 1) % aircraft.size();
     lastScreenMs = now;
   }
