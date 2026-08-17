@@ -29,7 +29,7 @@ jobs:
         env: [esp32-dev]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Cache PlatformIO
         uses: actions/cache@v6
@@ -78,7 +78,7 @@ jobs:
           ls -lh staging/${{ matrix.env }}/
 
       - name: Upload staged assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: firmware-${{ matrix.env }}
           path: staging/${{ matrix.env }}/
@@ -89,10 +89,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Download all firmware artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: staging/
 

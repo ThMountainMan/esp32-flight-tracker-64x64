@@ -19,7 +19,7 @@ jobs:
         env: [esp32-dev, esp32-s3]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/cache@v6
         with:
@@ -41,7 +41,7 @@ jobs:
         run: pio run -e ${{ matrix.env }}
 
       - name: Upload firmware artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: esp32-flight-tracker-${{ matrix.env }}
           path: .pio/build/${{ matrix.env }}/firmware.bin
@@ -49,7 +49,7 @@ jobs:
 
       - name: Upload filesystem image (if present)
         if: hashFiles('.pio/build/${{ matrix.env }}/littlefs.bin') != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: esp32-flight-tracker-${{ matrix.env }}-littlefs
           path: .pio/build/${{ matrix.env }}/littlefs.bin
