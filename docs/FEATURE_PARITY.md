@@ -18,6 +18,80 @@ feature unchanged on ESP32 hardware.
 
 ---
 
+## Side-by-side comparison with ColinWaddell/FlightTracker
+
+This table lists every significant feature of the original Python project and its
+current status in this ESP32 firmware.  The Python project targets a 64×32 panel
+on Raspberry Pi; the ESP32 firmware targets a 64×64 panel on ESP32/ESP32-S3.
+
+### Flight data
+
+| Feature | Python (ColinWaddell) | ESP32 firmware |
+|---------|----------------------|---------------|
+| FlightRadar24 data source | ✅ via `FlightRadarAPI` library | ✅ direct HTTP feed |
+| Local ADS-B / tar1090 source | ✅ configurable URL, FR24 fallback | 📋 planned |
+| OpenSky Network source | ✅ OAuth2 Client ID/Secret | 📋 planned |
+| Simple mode: centre + radius | ✅ | ✅ |
+| Advanced mode: bounding box + observer | ✅ | 📋 planned |
+| Altitude filter (min/max) | ✅ metres | ✅ feet (convert as needed) |
+| Route lookup: origin/destination ICAO | ✅ via adsbdb.com | ✅ via configurable URL template |
+| Home-airport highlighting | ✅ IATA code | ✅ ICAO code |
+| Configurable max-flight count | ✅ `max_flight_lookup` | ❌ shows all within radius |
+| ICAO / IATA callsign toggle | ✅ `callsign_format` | ❌ ICAO only |
+| Airport display style options | ✅ 5 styles (code, name, municipality…) | ❌ ICAO code only |
+| Aircraft make/model detail row | ✅ toggle vs altitude/speed/heading | ❌ type code + telemetry always shown |
+
+### Display and scenes
+
+| Feature | Python (ColinWaddell) | ESP32 firmware |
+|---------|----------------------|---------------|
+| Panel size | 64×32 | 64×64 |
+| Platform driver | rpi-rgb-led-matrix / PiOMatter | ESP32 I2S/DMA |
+| Flight telemetry scene | ✅ | ✅ |
+| Airline logo / badge | ✅ full bitmap catalogue | ✅ compact colour/initial badges |
+| Idle clock (12 / 24-hour) | ✅ | ✅ |
+| Date format options | ✅ 3 formats | ❌ not displayed |
+| Weather scene (temperature) | ✅ via WeatherAPI (key required) | ✅ via Open-Meteo (no key) |
+| Rainfall / 24-hour chart | ✅ with WeatherAPI key | ⚠️ planned, no API key path exists |
+| Satellite / ISS pass scene | ✅ NORAD ID, elevation, timeout | ⚠️ planned; needs TLE + memory budget |
+| Display themes (mono, pastel…) | ✅ 3 themes | 📋 planned |
+| Screen rotate 180° | ✅ | ❌ |
+| Animation speed preset | ✅ default/slower/faster | ❌ |
+| On-screen loading pixel blink | ✅ | ❌ |
+| External loading LED (GPIO) | ✅ | 📋 optional low-priority |
+
+### Configuration and maintenance
+
+| Feature | Python (ColinWaddell) | ESP32 firmware |
+|---------|----------------------|---------------|
+| Config file | ✅ JSON on disk | ✅ LittleFS JSON |
+| Web settings UI | ✅ Flask, password-protected | ✅ ESPAsyncWebServer, password-protected |
+| First-boot Wi-Fi provisioning | ❌ assumes pre-configured Wi-Fi | ✅ captive-portal AP |
+| Config reset (settings) | ✅ `reset settings` CLI | ✅ GPIO 0 hold-5 s |
+| Config reset (password) | ✅ `reset password` CLI | ✅ GPIO 0 resets all config |
+| CLI tool | ✅ `flight-tracker.py` subcommands | ❌ serial monitor only |
+| systemd service / autostart | ✅ | ❌ boots directly from flash |
+| OTA firmware update | ❌ `git pull` + pip | ⚠️ planned; needs security design |
+| Scheduled brightness window | ✅ start/end time, level | ✅ day/night hours + brightness levels |
+| Screen brightness (1-5 / 0-255) | ✅ 5 steps | ✅ 0-255 |
+| Unit preferences (speed, height, temp) | ✅ per-unit setting | ✅ per-unit setting |
+| Log level setting | ✅ DEBUG…CRITICAL | ❌ serial only, no runtime control |
+| Web QR code on boot | ✅ | ❌ |
+
+### Hardware and platform
+
+| Feature | Python (ColinWaddell) | ESP32 firmware |
+|---------|----------------------|---------------|
+| Raspberry Pi 3/4/Zero | ✅ | ❌ |
+| Raspberry Pi 5 | ✅ | ❌ |
+| RGB Matrix Bonnet / HAT | ✅ optional PWM bridge | ❌ |
+| Desktop simulator | ✅ | ❌ |
+| ESP32 / ESP32-S3 | ❌ | ✅ |
+| Browser web flasher | ❌ | ✅ |
+| PSRAM support for larger features | ❌ not applicable | 📋 ESP32-S3 with PSRAM preferred |
+
+---
+
 ## Core flight tracking
 
 | Feature | ESP32 status | Notes |
