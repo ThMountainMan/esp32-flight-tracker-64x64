@@ -1,9 +1,20 @@
 #include "config.h"
 
 #include <ArduinoJson.h>
+#include <ESP.h>
 #include <LittleFS.h>
+#include <inttypes.h>
 
 namespace {
+// Returns the last 8 hex digits of the chip MAC as the default settings
+// portal password.  This ensures each device has a unique default credential.
+String defaultSettingsPassword() {
+  const uint32_t low32 = static_cast<uint32_t>(ESP.getEfuseMac() & 0xFFFFFFFFULL);
+  char buf[9];
+  snprintf(buf, sizeof(buf), "%08" PRIx32, low32);
+  return String(buf);
+}
+
 bool valuesAreInRange(const AppConfig &config) {
   if (config.latitude < -90.0F || config.latitude > 90.0F ||
       config.longitude < -180.0F || config.longitude > 180.0F ||
@@ -123,6 +134,19 @@ bool AppConfig::load() {
       return false;
     }
   }
+
+  // Settings portal password (optional; defaults to MAC-derived value).
+  const char *pwd = document["settings"]["password"] | "";
+  if (pwd[0] != '\0') {
+    if (strlen(pwd) < 4 || strlen(pwd) > 64) {
+      Serial.println("[config] settings.password must be 4–64 characters.");
+      return false;
+    }
+    settingsPassword = pwd;
+  } else {
+    settingsPassword = defaultSettingsPassword();
+  }
+
   return true;
 }
 
@@ -153,6 +177,13 @@ bool AppConfig::saveAtomic() const {
   document["brightness_schedule"]["night_brightness"] = nightBrightness;
   document["brightness_schedule"]["day_start_hhmm"] = dayStartHhmm;
   document["brightness_schedule"]["night_start_hhmm"] = nightStartHhmm;
+  // Only persist the password if the user has set a custom one (non-empty
+  // and different from the MAC-derived default).  This keeps the default
+  // credential auto-updating if the config file is regenerated on a new chip.
+  if (!settingsPassword.isEmpty() &&
+      settingsPassword != defaultSettingsPassword()) {
+    document["settings"]["password"] = settingsPassword;
+  }
 
   File file = LittleFS.open("/config.json.tmp", "w");
   if (!file) {

@@ -1,10 +1,26 @@
 #include "settings_server.h"
 
 #include <ArduinoJson.h>
+#include <ESP.h>
 #include <LittleFS.h>
 #include <WiFi.h>
+#include <inttypes.h>
 
 namespace {
+
+// ---------------------------------------------------------------------------
+// Auth helper
+// ---------------------------------------------------------------------------
+
+// Checks HTTP Basic Auth credentials.  Returns true and proceeds if the
+// credentials match; otherwise sends a 401 challenge and returns false.
+bool requireAuth(AsyncWebServerRequest *request, const AppConfig &config) {
+  if (!request->authenticate("admin", config.settingsPassword.c_str())) {
+    request->requestAuthentication("Flight Tracker Settings");
+    return false;
+  }
+  return true;
+}
 
 // ---------------------------------------------------------------------------
 // HTML helpers
@@ -208,6 +224,16 @@ String settingsHtml(const AppConfig &cfg, const String &message = String(),
 
   html += F("<button type='submit'>Save and restart</button></form>");
 
+  // Change settings password
+  html += F("<hr><h2>Settings Password</h2>"
+            "<p><small>Username is always <strong>admin</strong>. "
+            "Leave the new password blank to keep the current one. "
+            "Must be 4–64 characters if changed.</small></p>"
+            "<form method='post' action='/save'>"
+            "<input type='hidden' name='_change_pwd' value='1'>"
+            "<label>New password<input name='settings_password' type='password' minlength='4' maxlength='64' autocomplete='new-password' placeholder='leave blank to keep current'></label>"
+            "<button type='submit'>Change password and restart</button></form>");
+
   // Factory reset
   html += F("<hr><h2>Factory Reset</h2>"
             "<p><small>Erases the saved configuration and restarts into provisioning mode."
@@ -229,13 +255,28 @@ String settingsHtml(const AppConfig &cfg, const String &message = String(),
 void SettingsServer::begin(AppConfig &config, const char *sourceStatus) {
   if (running_) return;
 
+  // Ensure there is always a password.  This handles the edge case where
+  // config.load() failed (first-boot timeout) and settingsPassword was never
+  // populated by the config layer.
+  if (config.settingsPassword.isEmpty()) {
+    const uint32_t low32 =
+        static_cast<uint32_t>(ESP.getEfuseMac() & 0xFFFFFFFFULL);
+    char buf[9];
+    snprintf(buf, sizeof(buf), "%08" PRIx32, low32);
+    config.settingsPassword = String(buf);
+  }
+  Serial.printf("[settings] Portal credentials: admin / %s\n",
+                config.settingsPassword.c_str());
+
   // GET / – settings form
   server_.on("/", HTTP_GET, [&config](AsyncWebServerRequest *request) {
+    if (!requireAuth(request, config)) return;
     request->send(200, "text/html; charset=utf-8", settingsHtml(config));
   });
 
-  // GET /status – JSON status
+  // GET /status – JSON status (also auth-protected)
   server_.on("/status", HTTP_GET, [&config, sourceStatus](AsyncWebServerRequest *request) {
+    if (!requireAuth(request, config)) return;
     JsonDocument doc;
     const bool connected = (WiFi.status() == WL_CONNECTED);
     doc["wifi_state"] = connected ? "connected" : "disconnected";
@@ -250,7 +291,47 @@ void SettingsServer::begin(AppConfig &config, const char *sourceStatus) {
 
   // POST /save – update configuration and restart
   server_.on("/save", HTTP_POST, [&config](AsyncWebServerRequest *request) {
-    // Required fields
+    if (!requireAuth(request, config)) return;
+
+    // Password-only change: a lightweight form that only posts _change_pwd +
+    // settings_password.  All other current-config values are kept as-is and
+    // re-saved so the config file stays consistent.
+    const bool isPwdChange =
+        request->hasParam("_change_pwd", true) &&
+        request->getParam("_change_pwd", true)->value() == "1";
+
+    if (isPwdChange) {
+      const String newPwd =
+          request->hasParam("settings_password", true)
+              ? request->getParam("settings_password", true)->value()
+              : String();
+      if (newPwd.isEmpty()) {
+        // Blank → keep current password; nothing to do.
+        request->send(200, "text/html; charset=utf-8",
+                      settingsHtml(config, "Password unchanged (no input provided)."));
+        return;
+      }
+      if (newPwd.length() < 4 || newPwd.length() > 64) {
+        request->send(200, "text/html; charset=utf-8",
+                      settingsHtml(config, "Password must be 4–64 characters."));
+        return;
+      }
+      AppConfig next = config;
+      next.settingsPassword = newPwd;
+      if (!next.saveAtomic()) {
+        request->send(200, "text/html; charset=utf-8",
+                      settingsHtml(config, "Failed to save configuration."));
+        return;
+      }
+      config = next;
+      request->send(200, "text/html; charset=utf-8",
+                    settingsHtml(config, "Password changed. Restarting…", true));
+      delay(500);
+      ESP.restart();
+      return;
+    }
+
+    // Full settings save
     if (!request->hasParam("ssid", true) || !request->hasParam("password", true)) {
       request->send(200, "text/html; charset=utf-8",
                     settingsHtml(config, "Missing required fields."));
@@ -367,7 +448,8 @@ void SettingsServer::begin(AppConfig &config, const char *sourceStatus) {
   });
 
   // POST /reset – erase config and reboot into provisioning
-  server_.on("/reset", HTTP_POST, [](AsyncWebServerRequest *request) {
+  server_.on("/reset", HTTP_POST, [&config](AsyncWebServerRequest *request) {
+    if (!requireAuth(request, config)) return;
     Serial.println("[settings] Factory reset requested via web portal.");
     LittleFS.remove("/config.json");
     request->send(200, "text/html; charset=utf-8",

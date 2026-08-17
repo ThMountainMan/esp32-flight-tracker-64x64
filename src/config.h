@@ -31,6 +31,11 @@ struct AppConfig {
   uint16_t dayStartHhmm = 360;    // 06:00
   uint16_t nightStartHhmm = 1320; // 22:00
 
+  // Runtime settings portal password.  Username is always "admin".
+  // Defaults to the last 8 hex digits of the chip MAC if left empty in the
+  // config file.  Must be 4–64 characters when set explicitly.
+  String settingsPassword;
+
   bool load();
   bool saveAtomic() const;
 };

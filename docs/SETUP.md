@@ -66,7 +66,25 @@ on **port 80**. Open a browser to `http://<device-ip>/` to:
 - Save configuration atomically and restart with the new settings.
 - Perform a **factory reset** (erase `/config.json` and re-enter provisioning mode).
 
-The device IP address is printed in the serial monitor on every successful connection:
+### Credentials
+
+The settings page is protected by HTTP Basic Auth:
+
+| Field | Value |
+|---|---|
+| Username | `admin` |
+| Password | last 8 hex digits of the chip MAC *(default)* |
+
+The active password is printed to the serial monitor on every boot:
+
+```
+[settings] Portal credentials: admin / a1b2c3d4
+```
+
+You can set a custom password in the **Settings Password** section of the portal,
+or via `settings.password` in `config.json`.  See [CONFIG.md](CONFIG.md).
+
+The device IP address is also printed on connection:
 
 ```
 [wifi] Connected: 192.168.1.42

@@ -5,8 +5,18 @@
 ### Accessing the settings page
 
 While the device is connected to your Wi-Fi network, open a browser and navigate to
-`http://<device-ip>/` to reach the **settings page**. The device's IP address is printed
-on the serial monitor on every successful Wi-Fi connection:
+`http://<device-ip>/` to reach the **settings page**.  You will be prompted for
+credentials:
+
+| Field | Value |
+|---|---|
+| Username | `admin` |
+| Password | printed to serial as `[settings] Portal credentials: admin / <password>` |
+
+By default the password is the last 8 hex digits of the chip MAC address (unique per
+device).  You can change it in the **Settings Password** section of the portal.
+
+The device's IP address is printed on the serial monitor on every successful connection:
 
 ```
 [wifi] Connected: 192.168.1.42
