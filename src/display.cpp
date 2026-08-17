@@ -258,6 +258,40 @@ void Display::showFlight(const Aircraft &aircraft, size_t index,
   text(0, 54, matrix_->color565(120, 120, 120), page, 1);
 }
 
+void Display::showWeather(const WeatherData &weather, bool tempInCelsius,
+                          const String &sourceStatus) {
+  if (!matrix_) return;
+  clear();
+
+  // Header label
+  text(0, 0, matrix_->color565(0, 180, 255), "WEATHER", 1);
+
+  if (!weather.valid) {
+    text(0, 14, matrix_->color565(200, 80, 80), "No data", 1);
+  } else {
+    // Temperature line
+    float temp = weather.tempCelsius;
+    const char *unit = "C";
+    if (!tempInCelsius) {
+      temp = weather.tempCelsius * 9.0F / 5.0F + 32.0F;
+      unit = "F";
+    }
+    char tempBuf[10];
+    snprintf(tempBuf, sizeof(tempBuf), "%+.1f*%s", temp, unit);
+    text(0, 14, matrix_->color565(255, 220, 80), String(tempBuf), 1);
+
+    // Conditions (truncated to fit 64 px at text size 1, 10 chars)
+    String desc = weather.description;
+    if (desc.length() > 10) desc = desc.substring(0, 10);
+    text(0, 28, 0xFFFF, desc, 1);
+  }
+
+  // Source status (bottom, same as clock scene)
+  String status = sourceStatus;
+  if (status.length() > 10) status = status.substring(0, 10);
+  text(0, 44, matrix_->color565(180, 180, 0), status, 1);
+}
+
 // ---------------------------------------------------------------------------
 // Private helpers
 // ---------------------------------------------------------------------------
