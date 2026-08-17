@@ -154,14 +154,12 @@ void Display::showClock(bool networkOk, const char *sourceStatus) {
   struct tm tm_info;
   localtime_r(&now, &tm_info);
 
-  char timeBuf[6];
-  if (clock24Hour_) {
-    snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d", tm_info.tm_hour,
-             tm_info.tm_min);
-  } else {
-    int hour12 = tm_info.tm_hour % 12;
-    if (hour12 == 0) hour12 = 12;
-    snprintf(timeBuf, sizeof(timeBuf), "%2d:%02d", hour12, tm_info.tm_min);
+  char timeBuf[6] = {};
+  if (strftime(timeBuf, sizeof(timeBuf), clock24Hour_ ? "%H:%M" : "%I:%M",
+               &tm_info) == 0) {
+    snprintf(timeBuf, sizeof(timeBuf), "--:--");
+  } else if (!clock24Hour_ && timeBuf[0] == '0') {
+    timeBuf[0] = ' ';
   }
 
   uint16_t timeColour =
