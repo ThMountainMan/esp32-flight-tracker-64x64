@@ -120,11 +120,13 @@
   </div>
 
   <div class="info">
-    <strong>Wi-Fi / configuration not included.</strong>
-    This firmware image contains no Wi-Fi credentials or location settings.
-    After flashing, upload <code>data/config.json</code> via PlatformIO LittleFS:
-    <code>pio run -e esp32-dev -t uploadfs</code>.
-    See <a href="../WEB_FLASHER.md">WEB_FLASHER.md</a> for details.
+    <strong>Configuration happens after flashing — no extra steps needed.</strong>
+    On first boot the device starts a temporary Wi-Fi access point called
+    <strong>FlightTracker-Setup-&lt;id&gt;</strong>. Connect your phone or laptop to that
+    network, open <strong>http://192.168.4.1/</strong> in a browser, and enter your
+    Wi-Fi credentials, location, and display settings. The device saves the
+    configuration and reboots into normal operation automatically.
+    See <a href="../WEB_FLASHER.md">WEB_FLASHER.md</a> for the full walkthrough.
   </div>
 </div>
 
