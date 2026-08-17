@@ -62,6 +62,24 @@ String portalHtml(const AppConfig &config, const String &message, bool success) 
   html += F(">Normal</option><option value='1'");
   if (config.rotate180) html += F(" selected");
   html += F(">Rotate 180°</option></select></label>");
+  html += F("<fieldset><legend>Scheduled Brightness</legend>");
+  html += F("<label>Enable schedule<select name='sched_enabled'><option value='0'");
+  if (!config.scheduleEnabled) html += F(" selected");
+  html += F(">Off (use fixed brightness)</option><option value='1'");
+  if (config.scheduleEnabled) html += F(" selected");
+  html += F(">On</option></select></label>");
+  html += F("<label>Day brightness (0-255)<input name='day_brightness' type='number' min='0' max='255' value='");
+  html += String(config.dayBrightness);
+  html += F("'></label>");
+  html += F("<label>Night brightness (0-255)<input name='night_brightness' type='number' min='0' max='255' value='");
+  html += String(config.nightBrightness);
+  html += F("'></label>");
+  html += F("<label>Day start (minutes past midnight, 0-1439)<input name='day_start_hhmm' type='number' min='0' max='1439' value='");
+  html += String(config.dayStartHhmm);
+  html += F("'></label>");
+  html += F("<label>Night start (minutes past midnight, 0-1439)<input name='night_start_hhmm' type='number' min='0' max='1439' value='");
+  html += String(config.nightStartHhmm);
+  html += F("'></label><small>Example: 06:00 = 360, 22:00 = 1320. Requires NTP time sync.</small></fieldset>");
   html += F("<button type='submit'>Save and restart</button></form>");
   html += F("<p><small>After saving, the device restarts and joins your Wi-Fi network.</small></p></body></html>");
   return html;
@@ -157,6 +175,33 @@ bool ProvisioningPortal::run(AppConfig &config, Display &display, uint32_t timeo
     next.radiusKm = radiusKm;
     next.brightness = static_cast<uint8_t>(brightness);
     next.rotate180 = rotateRaw == "1";
+
+    // Scheduled brightness (optional fields; keep defaults if absent/invalid)
+    const String schedEnabledRaw =
+        request->hasParam("sched_enabled", true)
+            ? request->getParam("sched_enabled", true)->value()
+            : "0";
+    next.scheduleEnabled = (schedEnabledRaw == "1");
+    if (next.scheduleEnabled) {
+      uint32_t dayBr = next.dayBrightness;
+      uint32_t nightBr = next.nightBrightness;
+      uint32_t dayStart = next.dayStartHhmm;
+      uint32_t nightStart = next.nightStartHhmm;
+      if (!parseUintParam(request, "day_brightness", dayBr) || dayBr > 255 ||
+          !parseUintParam(request, "night_brightness", nightBr) || nightBr > 255 ||
+          !parseUintParam(request, "day_start_hhmm", dayStart) || dayStart >= 1440 ||
+          !parseUintParam(request, "night_start_hhmm", nightStart) ||
+          nightStart >= 1440 || dayStart == nightStart) {
+        sendPortalPage(request, candidate,
+                       "Invalid schedule values. Check brightness (0-255) and "
+                       "start times (0-1439, must differ).");
+        return;
+      }
+      next.dayBrightness = static_cast<uint8_t>(dayBr);
+      next.nightBrightness = static_cast<uint8_t>(nightBr);
+      next.dayStartHhmm = static_cast<uint16_t>(dayStart);
+      next.nightStartHhmm = static_cast<uint16_t>(nightStart);
+    }
     if (!next.saveAtomic()) {
       sendPortalPage(request, candidate, "Failed to save configuration.");
       return;

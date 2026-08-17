@@ -47,6 +47,11 @@ The config uses nested JSON objects.
 | `filters.min_altitude_ft` | int | `0` | Minimum retained altitude in feet (`0` disables the lower filter) |
 | `filters.max_altitude_ft` | int | `0` | Maximum retained altitude in feet (`0` disables the upper filter) |
 | `fr24.poll_interval_seconds` | int | `60` | FR24 poll interval in seconds (30–3600) |
+| `brightness_schedule.enabled` | bool | `false` | Enable scheduled day/night brightness switching |
+| `brightness_schedule.day_brightness` | int | `64` | Panel brightness during the day window (0–255) |
+| `brightness_schedule.night_brightness` | int | `8` | Panel brightness during the night window (0–255) |
+| `brightness_schedule.day_start_hhmm` | int | `360` | Start of day window in minutes past midnight (0–1439); `360` = 06:00 |
+| `brightness_schedule.night_start_hhmm` | int | `1320` | Start of night window in minutes past midnight (0–1439); `1320` = 22:00 |
 
 ## Example
 
@@ -76,9 +81,32 @@ The config uses nested JSON objects.
   },
   "fr24": {
     "poll_interval_seconds": 60
+  },
+  "brightness_schedule": {
+    "enabled": false,
+    "day_brightness": 64,
+    "night_brightness": 8,
+    "day_start_hhmm": 360,
+    "night_start_hhmm": 1320
   }
 }
 ```
+
+### Schedule examples
+
+| Intent | `day_start_hhmm` | `night_start_hhmm` | Effect |
+|---|---|---|---|
+| Dim 22:00–06:00 (typical) | `360` | `1320` | Full brightness 06:00–22:00, dim at night |
+| Always dim (overnight use) | `0` | `1` | Bright 00:00–00:01, dim the rest |
+| Morning-only bright 07:00–09:00 | `420` | `540` | Bright for two hours, dim otherwise |
+
+> **Time-sync note:** Scheduled brightness requires a successful NTP sync.
+> Until the device obtains a valid time (within roughly 30 seconds of connecting
+> to Wi-Fi), the fixed `display.brightness` value is used regardless of the
+> schedule.  If NTP is permanently unavailable the fixed brightness is used
+> for the entire session.  The schedule is re-evaluated once per minute in the
+> main loop without interrupting display refresh, Wi-Fi reconnection, or flight
+> cycling.
 
 ## Constraints
 
@@ -89,3 +117,5 @@ The config uses nested JSON objects.
 - `filters.min_altitude_ft` and `filters.max_altitude_ft` use `0` as disable values.
 - If both altitude filters are active (non-zero), `min_altitude_ft` must be `<= max_altitude_ft`.
 - FR24 altitude `0` (unknown altitude) is always retained by the altitude filter policy.
+- When `brightness_schedule.enabled` is `true`, `day_start_hhmm` and `night_start_hhmm` must be different and both in range 0–1439.
+- `day_brightness` and `night_brightness` follow the same 0–255 limits as `display.brightness`.

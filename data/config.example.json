@@ -23,5 +23,12 @@
   },
   "fr24": {
     "poll_interval_seconds": 60
+  },
+  "brightness_schedule": {
+    "enabled": false,
+    "day_brightness": 64,
+    "night_brightness": 8,
+    "day_start_hhmm": 360,
+    "night_start_hhmm": 1320
   }
 }
