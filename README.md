@@ -37,7 +37,7 @@ Read [docs/WIRING.md](docs/WIRING.md) before applying power.
 ## Quick start
 
 ```bash
-git clone https://github.com/KK-ThBer/esp32-flight-tracker-64x64.git
+git clone https://github.com/ThMountainMan/esp32-flight-tracker-64x64.git
 cd esp32-flight-tracker-64x64
 python3 -m pip install platformio
 pio run -e esp32dev -t upload
@@ -79,7 +79,7 @@ No software installation required — the binary is downloaded from a GitHub Rel
 and written locally through the Web Serial API.
 
 - **Installer page (placeholder — activate GitHub Pages first):**
-  `https://kk-thber.github.io/esp32-flight-tracker-64x64/web-installer/`
+  `https://thmountainman.github.io/esp32-flight-tracker-64x64/web-installer/`
   See [docs/WEB_FLASHER.md](docs/WEB_FLASHER.md) for activation steps and full documentation.
 
 > ⚠ The web flasher only works while the ESP32 is physically connected to

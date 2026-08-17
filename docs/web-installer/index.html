@@ -120,11 +120,13 @@
   </div>
 
   <div class="info">
-    <strong>Wi-Fi / configuration not included.</strong>
-    This firmware image contains no Wi-Fi credentials or location settings.
-    After flashing, upload <code>data/config.json</code> via PlatformIO LittleFS:
-    <code>pio run -e esp32-dev -t uploadfs</code>.
-    See <a href="../WEB_FLASHER.md">WEB_FLASHER.md</a> for details.
+    <strong>Configuration happens after flashing — no extra steps needed.</strong>
+    On first boot the device starts a temporary Wi-Fi access point called
+    <strong>FlightTracker-Setup-&lt;id&gt;</strong>. Connect your phone or laptop to that
+    network, open <strong>http://192.168.4.1/</strong> in a browser, and enter your
+    Wi-Fi credentials, location, and display settings. The device saves the
+    configuration and reboots into normal operation automatically.
+    See <a href="../WEB_FLASHER.md">WEB_FLASHER.md</a> for the full walkthrough.
   </div>
 </div>
 
@@ -154,14 +156,14 @@
   </p>
   <p>
     Full documentation: <a href="../WEB_FLASHER.md">docs/WEB_FLASHER.md</a><br />
-    Source &amp; releases: <a href="https://github.com/KK-ThBer/esp32-flight-tracker-64x64/releases">
-      github.com/KK-ThBer/esp32-flight-tracker-64x64/releases</a>
+    Source &amp; releases: <a href="https://github.com/ThMountainMan/esp32-flight-tracker-64x64/releases">
+      github.com/ThMountainMan/esp32-flight-tracker-64x64/releases</a>
   </p>
 </div>
 
 <footer>
   ESP32 Flight Tracker &mdash; open source &mdash;
-  <a href="https://github.com/KK-ThBer/esp32-flight-tracker-64x64">GitHub</a>
+  <a href="https://github.com/ThMountainMan/esp32-flight-tracker-64x64">GitHub</a>
   &bull; Powered by <a href="https://esphome.github.io/esp-web-tools/">ESP Web Tools</a>
 </footer>
 

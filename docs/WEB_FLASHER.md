@@ -32,16 +32,40 @@ browser using [ESP Web Tools](https://esphome.github.io/esp-web-tools/) and Web 
 
 ## Step-by-step
 
+### Part 1 — Flash the firmware
+
 1. Connect the ESP32 to your computer with a USB data cable.
 2. Open the web installer:
-   - **GitHub Pages URL:** `https://kk-thber.github.io/esp32-flight-tracker-64x64/web-installer/`
+   - **GitHub Pages URL:** `https://thmountainman.github.io/esp32-flight-tracker-64x64/web-installer/`
      _(placeholder — see [Activation](#activation) below)_
    - **Local fallback:** open `docs/web-installer/index.html` in Chrome/Edge directly.
-3. Select the correct board target (`esp32-dev`).
-4. Click **"Connect & Flash esp32-dev"**.
-5. In the browser dialog, select the serial port for your ESP32.
-6. Follow the on-screen prompts. The installer will erase and write all required
-   partitions automatically.
+3. Click **"Connect & Flash esp32-dev"**.
+4. In the browser dialog, select the serial port for your ESP32.
+5. Follow the on-screen prompts. The installer will erase and write all required
+   partitions automatically. This takes about 30–60 seconds.
+
+### Part 2 — Configure on first boot
+
+Once the flash completes, the device starts a temporary Wi-Fi setup network
+automatically. No extra software or USB connection is needed for this step.
+
+6. **Disconnect from your normal Wi-Fi** on your phone or laptop.
+7. Connect to the Wi-Fi network named **`FlightTracker-Setup-XXXXXX`**
+   (the last characters are unique to your device).
+8. Open a browser and go to **`http://192.168.4.1/`**
+   (on most phones a captive-portal popup will appear automatically — tap it).
+9. Fill in:
+   - **Wi-Fi SSID** and **Password** — your home/office network credentials.
+   - **Latitude** and **Longitude** — your location (decimal degrees).
+   - **Radius (km)** — how far around you to track aircraft.
+   - Any other display settings you want to change.
+10. Tap **Save**. The device will write the configuration, then reboot and join
+    your Wi-Fi network. The setup AP disappears at this point.
+11. **Reconnect your phone/laptop to your normal Wi-Fi** and you are done.
+
+> **Tip:** if you miss the setup window, the AP times out after 10 minutes and
+> the device reboots back into setup mode automatically — just reconnect to
+> `FlightTracker-Setup-XXXXXX` and try again.
 
 ---
 
@@ -105,21 +129,40 @@ versa) — the bootloader offsets are different and will brick the device.
 
 ## Post-flash configuration (first boot)
 
-When no valid `config.json` exists, firmware starts a temporary
-`FlightTracker-Setup-*` AP with a captive portal:
+> **This is the normal configuration path — no extra tools or USB connection required.**
 
-1. Connect your phone/laptop to the setup AP.
-2. Open any web page (or `http://192.168.4.1/`) and submit Wi-Fi + location settings.
-3. The device writes `/config.json` to LittleFS and reboots into station mode.
+When the firmware boots for the first time (or any time no valid `config.json` exists on
+the device), it automatically starts a temporary Wi-Fi access point and serves a
+configuration page. Follow the steps in [Part 2](#part-2--configure-on-first-boot) above.
 
-The AP automatically times out after 10 minutes. If no valid config exists, the
-device restarts back into provisioning mode.
+The provisioning AP is named `FlightTracker-Setup-XXXXXX` and listens on `192.168.4.1`.
+The portal page accepts:
 
-If you prefer pre-seeding manually, upload LittleFS with PlatformIO:
+| Field | Description |
+|-------|-------------|
+| Wi-Fi SSID | Your network name |
+| Wi-Fi Password | Your network password |
+| Latitude / Longitude | Your location in decimal degrees |
+| Radius (km) | Aircraft tracking radius |
+| Brightness | Display brightness (0–255) |
+| Rotate 180° | Flip the display if mounted upside-down |
+
+After you submit the form the device writes `/config.json` to its internal filesystem
+and reboots. The setup AP is no longer available once the device has joined your network.
+
+If the device cannot reach the saved network on boot (wrong password, network
+unavailable) it will fall back into provisioning mode after a short delay, so you can
+correct the settings.
+
+### Advanced: pre-seeding config with PlatformIO (optional)
+
+If you prefer to set credentials before the first boot — for example when deploying
+multiple devices — you can upload a pre-filled `config.json` directly via PlatformIO
+instead of using the captive portal:
 
 ```bash
 cp data/config.example.json data/config.json
-# Edit data/config.json with your credentials and location first
+# Edit data/config.json with your credentials and location
 pio run -e esp32-dev -t uploadfs
 ```
 
@@ -129,7 +172,7 @@ pio run -e esp32-dev -t uploadfs
 
 ## Artifact and release availability
 
-Firmware binaries are published as assets on [GitHub Releases](https://github.com/KK-ThBer/esp32-flight-tracker-64x64/releases).
+Firmware binaries are published as assets on [GitHub Releases](https://github.com/ThMountainMan/esp32-flight-tracker-64x64/releases).
 The release workflow (`.github/workflows/release.yml`) runs on version tags or
 `workflow_dispatch`. Releases are created as **drafts** — the repository owner
 must review and publish each release before it is publicly available.
@@ -168,7 +211,7 @@ repository is private without additional access configuration.
 1. Make the repository **public** (or configure enterprise Pages).
 2. Go to **Settings → Pages → Source** and set it to **"GitHub Actions"**.
 3. The `pages.yml` workflow will deploy `docs/` on the next push to `main`.
-4. The live URL will be `https://kk-thber.github.io/esp32-flight-tracker-64x64/`.
+4. The live URL will be `https://thmountainman.github.io/esp32-flight-tracker-64x64/`.
 5. Update the placeholder URL in this document and in `README.md`.
 
 ---
@@ -209,5 +252,5 @@ esptool.py --chip esp32 --baud 921600 \
 - [Installer page](web-installer/index.html)
 - [ESP Web Tools documentation](https://esphome.github.io/esp-web-tools/)
 - [PlatformIO espressif32 documentation](https://docs.platformio.org/en/latest/platforms/espressif32.html)
-- [GitHub Releases](https://github.com/KK-ThBer/esp32-flight-tracker-64x64/releases)
+- [GitHub Releases](https://github.com/ThMountainMan/esp32-flight-tracker-64x64/releases)
 - [README](../README.md)
