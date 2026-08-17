@@ -69,6 +69,19 @@ bool AppConfig::load() {
   dayStartHhmm = schedule["day_start_hhmm"] | dayStartHhmm;
   nightStartHhmm = schedule["night_start_hhmm"] | nightStartHhmm;
 
+  JsonObjectConst weather = document["weather"];
+  weatherEnabled = weather["enabled"] | weatherEnabled;
+  weatherApiKey = String(weather["api_key"] | "");
+  weatherRefreshSeconds = weather["refresh_seconds"] | weatherRefreshSeconds;
+  // Clamp refresh interval to a safe range (5 min – 1 hour).
+  if (weatherRefreshSeconds < 300) weatherRefreshSeconds = 300;
+  if (weatherRefreshSeconds > 3600) weatherRefreshSeconds = 3600;
+  // An enabled weather section without an API key is a misconfiguration.
+  if (weatherEnabled && weatherApiKey.isEmpty()) {
+    Serial.println("[config] weather.enabled is true but weather.api_key is empty; disabling weather.");
+    weatherEnabled = false;
+  }
+
   distanceUnit = String(display["distance_unit"] | distanceUnit.c_str());
   altitudeUnit = String(display["altitude_unit"] | altitudeUnit.c_str());
   speedUnit = String(display["speed_unit"] | speedUnit.c_str());
@@ -153,6 +166,9 @@ bool AppConfig::saveAtomic() const {
   document["brightness_schedule"]["night_brightness"] = nightBrightness;
   document["brightness_schedule"]["day_start_hhmm"] = dayStartHhmm;
   document["brightness_schedule"]["night_start_hhmm"] = nightStartHhmm;
+  document["weather"]["enabled"] = weatherEnabled;
+  document["weather"]["api_key"] = weatherApiKey;
+  document["weather"]["refresh_seconds"] = weatherRefreshSeconds;
 
   File file = LittleFS.open("/config.json.tmp", "w");
   if (!file) {

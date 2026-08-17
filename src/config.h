@@ -20,6 +20,14 @@ struct AppConfig {
   int maxAltitudeFeet = 0;
   bool rotate180 = false;
 
+  // Weather (optional).  Disabled by default.  Set weatherEnabled to true and
+  // provide a valid OpenWeatherMap API key to enable the weather idle scene.
+  // The API key is never stored in source code or included in release assets.
+  // refreshSeconds is clamped to [300, 3600] at load time.
+  bool weatherEnabled = false;
+  String weatherApiKey;                   // empty → feature disabled
+  uint32_t weatherRefreshSeconds = 600;   // 10-minute default
+
   // Scheduled brightness (optional).  When scheduleEnabled is true the
   // firmware switches between dayBrightness and nightBrightness according to
   // the HHMM window boundaries below.  Values are in the range 0-255.

@@ -4,6 +4,7 @@
 
 #include "config.h"
 #include "fr24_client.h"
+#include "weather_client.h"
 
 /** Renders status, idle, and aircraft screens on one 64x64 HUB75 panel. */
 class Display {
@@ -13,6 +14,8 @@ class Display {
   void showStatus(const char *title, const char *detail, uint16_t colour);
   void showClock(bool networkOk, const char *sourceStatus);
   void showFlight(const Aircraft &aircraft, size_t index, size_t total);
+  void showWeather(const WeatherData &weather, bool tempInCelsius,
+                   const char *sourceStatus);
   void applyScheduledBrightness(const AppConfig &config);
 
  private:
