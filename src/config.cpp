@@ -69,6 +69,13 @@ bool AppConfig::load() {
   dayStartHhmm = schedule["day_start_hhmm"] | dayStartHhmm;
   nightStartHhmm = schedule["night_start_hhmm"] | nightStartHhmm;
 
+  JsonObjectConst route = document["route_lookup"];
+  routeLookupEnabled = route["enabled"] | routeLookupEnabled;
+  routeLookupUrl = String(route["url"] | routeLookupUrl.c_str());
+  routeCacheTtlSeconds = route["cache_ttl_seconds"] | routeCacheTtlSeconds;
+  homeAirportIcao = String(route["home_airport"] | homeAirportIcao.c_str());
+  homeAirportIcao.toUpperCase();
+
   JsonObjectConst weather = document["weather"];
   weatherEnabled = weather["enabled"] | weatherEnabled;
   weatherApiKey = String(weather["api_key"] | "");
@@ -166,6 +173,10 @@ bool AppConfig::saveAtomic() const {
   document["brightness_schedule"]["night_brightness"] = nightBrightness;
   document["brightness_schedule"]["day_start_hhmm"] = dayStartHhmm;
   document["brightness_schedule"]["night_start_hhmm"] = nightStartHhmm;
+  document["route_lookup"]["enabled"] = routeLookupEnabled;
+  document["route_lookup"]["url"] = routeLookupUrl;
+  document["route_lookup"]["cache_ttl_seconds"] = routeCacheTtlSeconds;
+  document["route_lookup"]["home_airport"] = homeAirportIcao;
   document["weather"]["enabled"] = weatherEnabled;
   document["weather"]["api_key"] = weatherApiKey;
   document["weather"]["refresh_seconds"] = weatherRefreshSeconds;

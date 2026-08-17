@@ -5,6 +5,14 @@
 
 #include "config.h"
 
+/** Resolution state for the optional route/airport lookup. */
+enum class RouteState : uint8_t {
+  Unknown = 0,  ///< No lookup attempted yet.
+  Pending,      ///< Lookup requested but not yet complete.
+  Resolved,     ///< Origin and destination are populated.
+  Failed,       ///< Lookup attempted but no data returned.
+};
+
 struct Aircraft {
   char id[10];          // FR24 hex flight ID (e.g. "3c4b21")
   char callsign[9];     // ICAO callsign or flight number (max 8 chars + NUL)
@@ -17,11 +25,18 @@ struct Aircraft {
   int speedKnots = 0;
   int headingDegrees = 0;
 
+  // Optional route data – populated by RouteLookup after a successful lookup.
+  char origin[5] = {};       // ICAO airport code (4 chars + NUL), or empty.
+  char destination[5] = {};  // ICAO airport code (4 chars + NUL), or empty.
+  RouteState routeState = RouteState::Unknown;
+
   Aircraft() {
     id[0] = '\0';
     callsign[0] = '\0';
     type[0] = '\0';
     airlineIcao[0] = '\0';
+    origin[0] = '\0';
+    destination[0] = '\0';
   }
 };
 

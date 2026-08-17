@@ -10,6 +10,7 @@
 #include "display.h"
 #include "fr24_client.h"
 #include "provisioning_portal.h"
+#include "route_lookup.h"
 #include "weather_client.h"
 
 namespace {
@@ -24,6 +25,7 @@ constexpr char kNtpServer[] = "pool.ntp.org";
 AppConfig config;
 Display display;
 Fr24Client fr24;
+RouteLookup routeLookup;
 WeatherClient weatherClient;
 ProvisioningPortal provisioningPortal;
 std::vector<Aircraft> aircraft;
@@ -78,6 +80,7 @@ void refreshFlights() {
     snprintf(sourceStatus, sizeof(sourceStatus), "FR24: %u flights",
              (unsigned)aircraft.size());
     if (selectedFlight >= aircraft.size()) selectedFlight = 0;
+    routeLookup.resetStates(aircraft);
   } else {
     strncpy(sourceStatus, error.c_str(), sizeof(sourceStatus) - 1);
     sourceStatus[sizeof(sourceStatus) - 1] = '\0';
@@ -163,6 +166,10 @@ void loop() {
     refreshFlights();
     lastPollMs = now;
   }
+  // Non-blocking route lookup tick (processes at most one aircraft per call).
+  if (!aircraft.empty()) {
+    routeLookup.tick(config, aircraft);
+  }
   // Weather refresh (independent of flight poll).
   if (config.weatherEnabled &&
       (now - lastWeatherMs >= config.weatherRefreshSeconds * 1000UL ||
@@ -191,7 +198,7 @@ void loop() {
       lastScreenMs = now;
     }
   } else if (now - lastScreenMs >= config.flightScreenSeconds * 1000UL) {
-    display.showFlight(aircraft[selectedFlight], selectedFlight, aircraft.size());
+    display.showFlight(aircraft[selectedFlight], selectedFlight, aircraft.size(), config);
     selectedFlight = (selectedFlight + 1) % aircraft.size();
     lastScreenMs = now;
     idleShowWeather = false;  // Reset idle scene on transition back to idle.

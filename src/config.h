@@ -39,6 +39,16 @@ struct AppConfig {
   uint16_t dayStartHhmm = 360;    // 06:00
   uint16_t nightStartHhmm = 1320; // 22:00
 
+  // Route / airport lookup (optional).
+  // When routeLookupEnabled is true, RouteLookup will attempt to resolve
+  // origin/destination ICAO codes for each visible aircraft via the URL
+  // template in routeLookupUrl.  The placeholder {callsign} is replaced with
+  // the flight callsign before each request.
+  bool routeLookupEnabled = false;
+  String routeLookupUrl;           ///< URL template, e.g. "http://pi/route?cs={callsign}"
+  uint32_t routeCacheTtlSeconds = 86400;  ///< Cache TTL in seconds (default 24 h)
+  String homeAirportIcao;          ///< Optional 4-char ICAO to highlight, e.g. "EGLL"
+
   bool load();
   bool saveAtomic() const;
 };
