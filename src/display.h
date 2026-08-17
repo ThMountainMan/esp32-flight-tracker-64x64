@@ -10,8 +10,8 @@ class Display {
  public:
   bool begin(const AppConfig &config);
   void showSplash();
-  void showStatus(const char *title, const String &detail, uint16_t colour);
-  void showClock(bool networkOk, const String &sourceStatus);
+  void showStatus(const char *title, const char *detail, uint16_t colour);
+  void showClock(bool networkOk, const char *sourceStatus);
   void showFlight(const Aircraft &aircraft, size_t index, size_t total);
 
  private:
@@ -27,7 +27,7 @@ class Display {
   SpeedUnit speedUnit_ = SpeedUnit::Knots;
 
   void clear();
-  void text(int x, int y, uint16_t colour, const String &value,
+  void text(int x, int y, uint16_t colour, const char *value,
             uint8_t size = 1);
   void fillRect(int x, int y, int width, int height, uint16_t colour);
 };

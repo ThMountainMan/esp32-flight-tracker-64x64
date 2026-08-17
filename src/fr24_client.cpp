@@ -6,10 +6,18 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 
 namespace {
 constexpr float kEarthRadiusKm = 6371.0F;
 constexpr size_t kMaximumAircraft = 12;
+
+// Helper: copy src into a fixed-size char array, always NUL-terminated.
+template <size_t N>
+void strncpy_safe(char (&dst)[N], const char *src) {
+  strncpy(dst, src ? src : "", N - 1);
+  dst[N - 1] = '\0';
+}
 
 String makeFeedUrl(const AppConfig &config) {
   const float latitudeDelta = config.radiusKm / 111.0F;
@@ -25,11 +33,6 @@ String makeFeedUrl(const AppConfig &config) {
            config.latitude + latitudeDelta, config.latitude - latitudeDelta,
            config.longitude - longitudeDelta, config.longitude + longitudeDelta);
   return String(url);
-}
-
-String arrayString(JsonArrayConst row, size_t index) {
-  const char *value = row[index] | "";
-  return String(value);
 }
 
 bool passesAltitudeFilter(const AppConfig &config, int altitudeFeet) {
@@ -49,20 +52,23 @@ bool passesAltitudeFilter(const AppConfig &config, int altitudeFeet) {
 float Fr24Client::distanceKm(float latA, float lonA, float latB, float lonB) {
   const float latitudeDelta = (latB - latA) * DEG_TO_RAD;
   const float longitudeDelta = (lonB - lonA) * DEG_TO_RAD;
-  const float a = sinf(latitudeDelta / 2.0F) * sinf(latitudeDelta / 2.0F) +
+  // Cache repeated sin() results to avoid redundant FP calls on the LX6 core.
+  const float sinHalfLat = sinf(latitudeDelta / 2.0F);
+  const float sinHalfLon = sinf(longitudeDelta / 2.0F);
+  const float a = sinHalfLat * sinHalfLat +
                   cosf(latA * DEG_TO_RAD) * cosf(latB * DEG_TO_RAD) *
-                  sinf(longitudeDelta / 2.0F) * sinf(longitudeDelta / 2.0F);
+                  sinHalfLon * sinHalfLon;
   return kEarthRadiusKm * 2.0F * atan2f(sqrtf(a), sqrtf(1.0F - a));
 }
 
-String Fr24Client::airlineFromCallsign(const String &callsign) {
-  if (callsign.length() < 3) return "";
-  String prefix = callsign.substring(0, 3);
-  for (char character : prefix) {
-    if (!isAlpha(character)) return "";
+void Fr24Client::airlineFromCallsign(const char *callsign, char (&out)[4]) {
+  out[0] = '\0';
+  if (!callsign || strlen(callsign) < 3) return;
+  for (int i = 0; i < 3; ++i) {
+    if (!isAlpha((unsigned char)callsign[i])) return;
+    out[i] = toupper((unsigned char)callsign[i]);
   }
-  prefix.toUpperCase();
-  return prefix;
+  out[3] = '\0';
 }
 
 bool Fr24Client::fetchNearby(const AppConfig &config,
@@ -72,7 +78,11 @@ bool Fr24Client::fetchNearby(const AppConfig &config,
   errorMessage = "";
 
   WiFiClientSecure client;
-  // TODO: Replace with certificate validation before a production deployment.
+  // TODO: Replace with certificate pinning before a production deployment.
+  // setInsecure() skips TLS certificate validation — acceptable for a
+  // hobby device on a trusted home network, but vulnerable to MITM on
+  // public Wi-Fi.  To fix, pin the FR24 root CA using
+  // client.setCACert(kFr24RootCa) with the PEM stored in flash.
   client.setInsecure();
   HTTPClient http;
   http.setConnectTimeout(7000);
@@ -89,8 +99,16 @@ bool Fr24Client::fetchNearby(const AppConfig &config,
     return false;
   }
 
+  // Use a filter document to instruct ArduinoJson to skip all keys except
+  // array values (the flight rows).  This dramatically reduces peak heap
+  // usage during deserialization of the potentially large FR24 feed.
+  JsonDocument filter;
+  filter["*"] = true;
+
   JsonDocument document;
-  const DeserializationError jsonError = deserializeJson(document, http.getStream());
+  const DeserializationError jsonError =
+      deserializeJson(document, http.getStream(),
+                      DeserializationOption::Filter(filter));
   http.end();
   if (jsonError) {
     errorMessage = "FR24 JSON: " + String(jsonError.c_str());
@@ -105,7 +123,7 @@ bool Fr24Client::fetchNearby(const AppConfig &config,
     if (row.size() <= 16 || row[1].isNull() || row[2].isNull()) continue;
 
     Aircraft item;
-    item.id = entry.key().c_str();
+    strncpy_safe(item.id, entry.key().c_str());
     item.latitude = row[1] | 0.0F;
     item.longitude = row[2] | 0.0F;
     item.distanceKm = distanceKm(config.latitude, config.longitude,
@@ -115,11 +133,31 @@ bool Fr24Client::fetchNearby(const AppConfig &config,
     item.altitudeFeet = row[4] | 0;
     if (!passesAltitudeFilter(config, item.altitudeFeet)) continue;
     item.speedKnots = row[5] | 0;
-    item.type = arrayString(row, 8);
-    item.callsign = arrayString(row, 16);
-    item.callsign.trim();
-    if (item.callsign.isEmpty()) item.callsign = item.id;
-    item.airlineIcao = airlineFromCallsign(item.callsign);
+
+    const char *rawType = row[8] | "";
+    strncpy_safe(item.type, rawType);
+
+    const char *rawCallsign = row[16] | "";
+    // Trim leading/trailing spaces in a fixed buffer.
+    {
+      char trimmed[9];
+      strncpy_safe(trimmed, rawCallsign);
+      // ltrim
+      size_t start = 0;
+      while (trimmed[start] == ' ') ++start;
+      // rtrim
+      size_t len = strlen(trimmed + start);
+      while (len > 0 && trimmed[start + len - 1] == ' ') --len;
+      if (len == 0) {
+        strncpy_safe(item.callsign, item.id);
+      } else {
+        strncpy(item.callsign, trimmed + start,
+                std::min(len, sizeof(item.callsign) - 1));
+        item.callsign[std::min(len, sizeof(item.callsign) - 1)] = '\0';
+      }
+    }
+
+    airlineFromCallsign(item.callsign, item.airlineIcao);
     aircraft.push_back(item);
     if (aircraft.size() == kMaximumAircraft) break;
   }
@@ -130,3 +168,4 @@ bool Fr24Client::fetchNearby(const AppConfig &config,
             });
   return true;
 }
+
